@@ -61,7 +61,6 @@ export const Developer: React.FC = () => {
         loadInitialData();
     }, []);
 
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${payoutStatus === 'approved' && user?.isPayoutEnabled ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
     useEffect(() => {
         if (user?.payoutRequestStatus) {
             setPayoutStatus(user.payoutRequestStatus);
@@ -84,7 +83,7 @@ export const Developer: React.FC = () => {
                 setApiKey(response.data.data.apiKey);
             }
         } catch (error) {
-                                        const code = `curl -X POST https://api.vtstack.ng/api/v1/payout/secure/request \\\n  -H "Authorization: Bearer <PAYOUT_SECRET_KEY>" \\\n  -H "X-Timestamp: ${Date.now()}" \\\n  -H "X-Signature: <SIGNATURE>" \\\n  -d '{"amount": 250000, "bankCode": "999", "accountNumber": "0123456789", "accountName": "John Payout", "narration": "Invoicing #456"}'`;
+            console.error('Error fetching API key:', error);
         }
     };
 
