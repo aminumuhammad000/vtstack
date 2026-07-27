@@ -530,7 +530,7 @@ const TenantDetailModal: React.FC<TenantDetailModalProps> = ({
                                             const data = await adminApi.impersonateTenant(fullTenant._id);
                                             toast.dismiss(loadingToast);
                                             
-                                            const appUrl = import.meta.env.VITE_APP_URL || 'https://vtstack.com.ng';
+                                            const appUrl = import.meta.env.VITE_APP_URL || 'https://vtstack.ng';
                                             const userJson = encodeURIComponent(JSON.stringify(data.user));
                                             const impersonateUrl = `${appUrl}/login?token=${data.token}&user=${userJson}`;
                                             

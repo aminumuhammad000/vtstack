@@ -59,7 +59,7 @@ export const ApiReference: React.FC = () => {
                         </div>
                         <div className="space-y-2">
                             <div className="text-purple-400">curl <span className="text-blue-400">-X</span> GET</div>
-                            <div className="pl-4 text-orange-300">"https://api.vtstack.com.ng/v1/virtual-accounts"</div>
+                            <div className="pl-4 text-orange-300">"https://api.vtstack.ng/v1/virtual-accounts"</div>
                             <div className="text-purple-400"><span className="text-blue-400">-H</span> <span className="text-orange-300">"x-api-key: sk_live_xxxx"</span></div>
                         </div>
                     </div>

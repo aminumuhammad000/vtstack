@@ -12,7 +12,7 @@ async function testAdminAPI() {
             },
             body: JSON.stringify({
                 // We found these credentials in server/src/scripts/create-admin.ts
-                email: 'admin@vtstack.com.ng',
+                email: 'admin@vtstack.ng',
                 password: 'Admin@VTStack123'
             })
         });

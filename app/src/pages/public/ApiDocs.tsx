@@ -215,19 +215,19 @@ export const ApiDocs: React.FC = () => {
                                         </div>
                                     </div>
                                     <CodeBlock 
-                                        id="step-2-code"
-                                        method="POST"
-                                        path="/virtual-accounts"
-                                        code={`curl -X POST https://api.vtstack.com.ng/api/virtual-accounts \\
-  -H "x-api-key: YOUR_API_KEY" \\
-  -d '{
-    "firstName": "Hassan",
-    "lastName": "Ibrahim",
-    "email": "hassan@example.com",
-    "phone": "08012345678",
-    "bvn": "22123456789",
-    "reference": "user_102_fund_acc"
-  }'`}
+                                                                        id="step-2-code"
+                                                                                method="POST"
+                                                                                path="/virtual-accounts"
+                                                                                code={`curl -X POST https://api.vtstack.ng/api/virtual-accounts \\
+    -H "x-api-key: YOUR_API_KEY" \\
+    -d '{
+        "firstName": "Hassan",
+        "lastName": "Ibrahim",
+        "email": "hassan@example.com",
+        "phone": "08012345678",
+        "bvn": "22123456789",
+        "reference": "user_102_fund_acc"
+    }'`}
                                     />
                                 </div>
 
@@ -329,7 +329,7 @@ export const ApiDocs: React.FC = () => {
                             <p>All API requests should be made to the following base URL:</p>
                             <CodeBlock 
                                 id="base-url-code"
-                                code={`https://api.vtstack.com.ng/api`}
+                                code={`https://api.vtstack.ng/api`}
                             />
                             <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
                                 <Server size={18} className="text-gray-400" />
@@ -444,7 +444,7 @@ export const ApiDocs: React.FC = () => {
                                     id="list-banks-req"
                                     method="GET"
                                     path="/banks"
-                                    code={`curl -X GET https://api.vtstack.com.ng/api/banks \\
+                                    code={`curl -X GET https://api.vtstack.ng/api/banks \\
   -H "x-api-key: YOUR_SECRET_KEY"`}
                                 />
 
@@ -504,7 +504,7 @@ export const ApiDocs: React.FC = () => {
                                     id="verify-bank-req"
                                     method="GET"
                                     path="/banks/verify?bankCode=044&accountNumber=0123456789"
-                                    code={`curl -X GET "https://api.vtstack.com.ng/api/banks/verify?bankCode=044&accountNumber=0123456789" \\
+                                    code={`curl -X GET "https://api.vtstack.ng/api/banks/verify?bankCode=044&accountNumber=0123456789" \\
   -H "x-api-key: YOUR_SECRET_KEY"`}
                                 />
 
@@ -619,7 +619,7 @@ const crypto = require('crypto');
 
 async function sendPayout(payload) {
   const PAYOUT_KEY = 'vt_pout_sec_xxxxxxxxxxxx';
-  const BASE_URL = 'https://api.vtstack.com.ng/api/v1/payouts';
+    const BASE_URL = 'https://api.vtstack.ng/api/v1/payouts';
   const timestamp = Date.now().toString();
   const idempotencyKey = crypto.randomUUID();
 

@@ -24,15 +24,15 @@ const app: Application = express();
 // CORS configuration — must come BEFORE helmet so headers are not stripped
 const corsOptions: cors.CorsOptions = {
     origin: [
-        'https://vtstack.com.ng',
-        'https://admin.vtstack.com.ng',
+        'https://vtstack.ng',
+        'https://admin.vtstack.ng',
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:5173',
         'http://localhost:5174'
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-palm-signature', 'x-api-key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-palm-signature', 'x-api-key', 'X-Timestamp', 'X-Signature', 'X-Idempotency-Key', 'X-VTStack-Signature'],
     credentials: true,
 };
 

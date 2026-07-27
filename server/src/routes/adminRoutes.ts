@@ -473,7 +473,7 @@ router.delete('/admins/:id', requireSuperAdmin, async (req: AuthenticatedRequest
         }
 
         // Prevent deleting super/default admin
-        if (['admin@vtstack.com.ng'].includes(user.email)) {
+        if (['admin@vtstack.ng'].includes(user.email)) {
             res.status(403).json({
                 success: false,
                 message: 'Cannot delete the master admin account',
@@ -539,7 +539,7 @@ router.delete('/tenants/:id', async (req: AuthenticatedRequest, res: Response): 
         }
 
         // Prevent deleting admin
-        if (['admin@vtstack.com.ng', 'admin@myconnecta.ng'].includes(user.email)) {
+        if (['admin@vtstack.ng', 'admin@myconnecta.ng'].includes(user.email)) {
             res.status(403).json({
                 success: false,
                 message: 'Cannot delete admin account',

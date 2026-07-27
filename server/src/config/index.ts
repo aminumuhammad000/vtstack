@@ -43,11 +43,11 @@ export const config = {
     },
 
     // Webhook
-    webhookBaseUrl: process.env.WEBHOOK_BASE_URL || 'https://api.vtstack.com.ng',
+    webhookBaseUrl: process.env.WEBHOOK_BASE_URL || 'https://api.vtstack.ng',
 
     // App
     app: {
-        url: process.env.APP_URL || 'https://vtstack.com.ng',
+        url: process.env.APP_URL || 'https://vtstack.ng',
     },
 };
 
