@@ -51,11 +51,11 @@ export const Login: React.FC = () => {
         try {
             const response = await api.post('/auth/login', formData);
             const { token, user } = response.data.data;
+            login(token, user);
             setSuccess('Redirecting to dashboard...');
             setTimeout(() => {
-                login(token, user);
                 navigate('/dashboard');
-            }, 1000);
+            }, 800);
         } catch (err: any) {
             console.error('Login error:', err);
             const errorMessage = err.response?.data?.message || err.message || 'Failed to login. Please try again.';
