@@ -73,7 +73,7 @@ const Login: React.FC = () => {
                                 {...register('email')}
                                 type="email"
                                 className={`w-full px-4 py-3 border ${errors.email ? 'border-red-500' : 'border-slate-300'} bg-white text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all`}
-                                placeholder="admin@vtstack.ng"
+                                placeholder="aminuamee@yahoo.com"
                             />
                             {errors.email && (
                                 <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>

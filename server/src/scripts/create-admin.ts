@@ -8,36 +8,41 @@ const createAdmin = async () => {
         console.log('✅ Connected to database');
 
         // Admin credentials
-        const adminEmail = 'admin@vtstack.ng';
-        const adminPassword = 'Admin@VTStack123';
-
-        // Check if admin already exists
-        const existingAdmin = await User.findOne({ email: adminEmail });
-        if (existingAdmin) {
-            console.log('⚠️  Admin user already exists with email:', adminEmail);
-            console.log('Email:', adminEmail);
-            console.log('You can use this email to login');
-            process.exit(0);
-        }
+        const adminEmail = 'aminuamee@yahoo.com';
+        const adminPassword = 'Robot@net.1-5';
 
         // Hash password
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-        // Create admin user
-        const admin = await User.create({
-            email: adminEmail,
-            passwordHash: hashedPassword,
-            firstName: 'Admin',
-            lastName: 'User',
-            phone: '+2348000000000',
-            role: 'admin',
-            status: 'active',
-            kyc_status: 'verified',
-            kycLevel: 3,
-            businessName: 'VTStack Admin',
-        });
+        // Check if admin already exists
+        const existingAdmin = await User.findOne({ email: adminEmail });
+        if (existingAdmin) {
+            existingAdmin.passwordHash = hashedPassword;
+            existingAdmin.role = 'admin';
+            existingAdmin.status = 'active';
+            existingAdmin.kyc_status = 'verified';
+            existingAdmin.kycLevel = 3;
+            await existingAdmin.save();
 
-        console.log('✅ Admin user created successfully!');
+            console.log('✅ Admin user updated successfully with new credentials!');
+        } else {
+            // Create admin user
+            await User.create({
+                email: adminEmail,
+                passwordHash: hashedPassword,
+                firstName: 'Admin',
+                lastName: 'User',
+                phone: '+2348000000000',
+                role: 'admin',
+                status: 'active',
+                kyc_status: 'verified',
+                kycLevel: 3,
+                businessName: 'VTStack Admin',
+            });
+
+            console.log('✅ Admin user created successfully!');
+        }
+
         console.log('');
         console.log('=================================');
         console.log('Admin Login Credentials:');
@@ -46,7 +51,6 @@ const createAdmin = async () => {
         console.log('Password:', adminPassword);
         console.log('=================================');
         console.log('');
-        console.log('⚠️  IMPORTANT: Please change this password after first login!');
 
         process.exit(0);
     } catch (error) {
