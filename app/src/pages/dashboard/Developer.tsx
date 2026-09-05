@@ -652,7 +652,7 @@ export const Developer: React.FC = () => {
                                             </div>
                                             <button
                                                 onClick={() => {
-                                                    const code = `curl -X POST https://api.vtstack.com.ng/api/v1/payout/secure/request \\\n  -H "Authorization: Bearer <PAYOUT_SECRET_KEY>" \\\n  -H "X-Timestamp: ${Date.now()}" \\\n  -H "X-Signature: <SIGNATURE>" \\\n  -d '{"amount": 250000, "bankCode": "999", "accountNumber": "0123456789", "accountName": "John Payout", "narration": "Invoicing #456"}'`;
+                                                    const code = `curl -X POST https://api.vtstack.ng/api/v1/payout/secure/request \\\n  -H "Authorization: Bearer <PAYOUT_SECRET_KEY>" \\\n  -H "X-Timestamp: ${Date.now()}" \\\n  -H "X-Signature: <SIGNATURE>" \\\n  -d '{"amount": 250000, "bankCode": "999", "accountNumber": "0123456789", "accountName": "John Payout", "narration": "Invoicing #456"}'`;
                                                     copyToClipboard(code);
                                                     showNotification('Curl command copied');
                                                 }}
