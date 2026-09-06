@@ -3,15 +3,16 @@ import { adminApi, type Admin } from '../../api/client';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, X, Shield, Mail, User, Phone, Lock, RefreshCw, Search, Trash2 } from 'lucide-react';
-import { createAdminSchema, type CreateAdminFormData } from '../../schemas/admin';
+import { Plus, X, Shield, Mail, User, Phone, Lock, RefreshCw, Search, Trash2, Edit2 } from 'lucide-react';
+import { createAdminSchema, updateAdminSchema, type CreateAdminFormData, type UpdateAdminFormData } from '../../schemas/admin';
 
 const AdminsPage: React.FC = () => {
     const [admins, setAdmins] = useState<Admin[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
-
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const {
         register,
@@ -20,6 +21,15 @@ const AdminsPage: React.FC = () => {
         formState: { errors, isSubmitting }
     } = useForm<CreateAdminFormData>({
         resolver: zodResolver(createAdminSchema)
+    });
+
+    const {
+        register: registerEdit,
+        handleSubmit: handleSubmitEdit,
+        reset: resetEdit,
+        formState: { errors: editErrors, isSubmitting: isSubmittingEdit }
+    } = useForm<UpdateAdminFormData>({
+        resolver: zodResolver(updateAdminSchema)
     });
 
     useEffect(() => {
@@ -48,6 +58,37 @@ const AdminsPage: React.FC = () => {
             fetchAdmins();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to create admin user');
+        }
+    };
+
+    const handleOpenEditModal = (admin: Admin) => {
+        setEditingAdmin(admin);
+        resetEdit({
+            firstName: admin.firstName || '',
+            lastName: admin.lastName || '',
+            email: admin.email || '',
+            phone: admin.phone || '',
+            role: (admin.role as 'admin' | 'subadmin') || 'admin',
+            status: (admin.status as 'active' | 'suspended' | 'pending') || 'active',
+            password: '',
+        });
+        setShowEditModal(true);
+    };
+
+    const onEditSubmit = async (data: UpdateAdminFormData) => {
+        if (!editingAdmin) return;
+        try {
+            const payload: any = { ...data };
+            if (!payload.password) {
+                delete payload.password;
+            }
+            await adminApi.updateAdmin(editingAdmin._id, payload);
+            toast.success('Admin user updated successfully');
+            setShowEditModal(false);
+            setEditingAdmin(null);
+            fetchAdmins();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to update admin user');
         }
     };
 
@@ -170,12 +211,16 @@ const AdminsPage: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="text-slate-400 hover:text-primary-600 transition-colors" title="Manage Permissions">
-                                                    <Shield size={18} />
+                                                <button
+                                                    onClick={() => handleOpenEditModal(admin)}
+                                                    className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                    title="Edit Admin"
+                                                >
+                                                    <Edit2 size={18} />
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDeleteAdmin(admin._id, admin.email)}
-                                                    className="text-slate-400 hover:text-red-600 transition-colors" 
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
                                                     title="Delete Admin"
                                                 >
                                                     <Trash2 size={18} />
@@ -186,7 +231,7 @@ const AdminsPage: React.FC = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                                         No admin users found matching your search.
                                     </td>
                                 </tr>
@@ -316,6 +361,161 @@ const AdminsPage: React.FC = () => {
                                         <>
                                             <Shield size={18} />
                                             Create Admin Account
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Admin Modal */}
+            {showEditModal && editingAdmin && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+                                    <Edit2 size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Edit Admin User</h3>
+                                    <p className="text-xs text-slate-500">{editingAdmin.email}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => { setShowEditModal(false); setEditingAdmin(null); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmitEdit(onEditSubmit)} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">First Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            {...registerEdit('firstName')}
+                                            type="text"
+                                            className={`w-full pl-10 pr-4 py-2 border ${editErrors.firstName ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm`}
+                                            placeholder="John"
+                                        />
+                                    </div>
+                                    {editErrors.firstName && <p className="text-red-500 text-xs">{editErrors.firstName.message}</p>}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Last Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            {...registerEdit('lastName')}
+                                            type="text"
+                                            className={`w-full pl-10 pr-4 py-2 border ${editErrors.lastName ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm`}
+                                            placeholder="Doe"
+                                        />
+                                    </div>
+                                    {editErrors.lastName && <p className="text-red-500 text-xs">{editErrors.lastName.message}</p>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Email Address</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        {...registerEdit('email')}
+                                        type="email"
+                                        className={`w-full pl-10 pr-4 py-2 border ${editErrors.email ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm`}
+                                        placeholder="admin@example.com"
+                                    />
+                                </div>
+                                {editErrors.email && <p className="text-red-500 text-xs">{editErrors.email.message}</p>}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        {...registerEdit('phone')}
+                                        type="tel"
+                                        className={`w-full pl-10 pr-4 py-2 border ${editErrors.phone ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm`}
+                                        placeholder="+234..."
+                                    />
+                                </div>
+                                {editErrors.phone && <p className="text-red-500 text-xs">{editErrors.phone.message}</p>}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Role</label>
+                                    <div className="relative">
+                                        <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <select
+                                            {...registerEdit('role')}
+                                            className={`w-full pl-10 pr-4 py-2 border ${editErrors.role ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm bg-white`}
+                                        >
+                                            <option value="admin">Admin</option>
+                                            <option value="subadmin">Sub-Admin</option>
+                                        </select>
+                                    </div>
+                                    {editErrors.role && <p className="text-red-500 text-xs">{editErrors.role.message}</p>}
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</label>
+                                    <div className="relative">
+                                        <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <select
+                                            {...registerEdit('status')}
+                                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm bg-white capitalize"
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="suspended">Suspended</option>
+                                            <option value="pending">Pending</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    New Password <span className="text-slate-400 lowercase font-normal">(optional)</span>
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        {...registerEdit('password')}
+                                        type="password"
+                                        className={`w-full pl-10 pr-4 py-2 border ${editErrors.password ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm`}
+                                        placeholder="Leave blank to keep unchanged"
+                                    />
+                                </div>
+                                {editErrors.password && <p className="text-red-500 text-xs">{editErrors.password.message}</p>}
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowEditModal(false); setEditingAdmin(null); }}
+                                    className="w-1/3 py-3 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-all text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingEdit}
+                                    className="w-2/3 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                >
+                                    {isSubmittingEdit ? (
+                                        <>
+                                            <RefreshCw size={18} className="animate-spin" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Edit2 size={18} />
+                                            Save Changes
                                         </>
                                     )}
                                 </button>

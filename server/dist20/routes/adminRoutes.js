@@ -47,6 +47,7 @@ const CronService_1 = require("../services/CronService");
 const WebhookService_1 = require("../services/WebhookService");
 const AuditService_1 = require("../services/AuditService");
 const WalletService_1 = require("../services/WalletService");
+const BackupService_1 = require("../services/BackupService");
 const router = (0, express_1.Router)();
 // Moved sync route to top to avoid conflicts
 // Public Debug Routes (No Auth for easy debugging)
@@ -374,12 +375,27 @@ router.post('/admins', middleware_1.requireSuperAdmin, async (req, res) => {
         if (!email || !password || !firstName || !lastName || !phone) {
             res.status(400).json({
                 success: false,
-                message: 'All fields are required',
+                message: 'All fields (firstName, lastName, email, phone, password) are required',
+            });
+            return;
+        }
+        const formattedEmail = email.toLowerCase().trim();
+        if (!/^\S+@\S+\.\S+$/.test(formattedEmail)) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid email address format',
+            });
+            return;
+        }
+        if (password.length < 6) {
+            res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters',
             });
             return;
         }
         // Check if user already exists
-        const existingUser = await models_1.User.findOne({ email: email.toLowerCase() });
+        const existingUser = await models_1.User.findOne({ email: formattedEmail });
         if (existingUser) {
             res.status(400).json({
                 success: false,
@@ -391,24 +407,38 @@ router.post('/admins', middleware_1.requireSuperAdmin, async (req, res) => {
         const salt = await bcryptjs_1.default.genSalt(10);
         const passwordHash = await bcryptjs_1.default.hash(password, salt);
         // Create admin user
+        const cleanFirstName = firstName.trim();
+        const cleanLastName = lastName.trim();
+        const adminRole = role === 'subadmin' ? 'subadmin' : 'admin';
         const admin = new models_1.User({
-            email: email.toLowerCase(),
+            email: formattedEmail,
             passwordHash,
-            firstName,
-            lastName,
-            fullName: `${firstName} ${lastName}`,
-            phone,
-            role: role === 'subadmin' ? 'subadmin' : 'admin',
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
+            fullName: `${cleanFirstName} ${cleanLastName}`,
+            phone: phone.trim(),
+            role: adminRole,
             status: 'active',
             kycLevel: 3, // Admins are auto-verified
+            kyc_status: 'verified',
         });
         await admin.save();
-        // Create wallet for admin
-        await models_1.Wallet.create({
-            userId: admin._id,
-            balance: 0,
-            currency: 'NGN',
-        });
+        // Create wallet for admin if one doesn't already exist
+        try {
+            const existingWallet = await models_1.Wallet.findOne({ userId: admin._id });
+            if (!existingWallet) {
+                await models_1.Wallet.create({
+                    userId: admin._id,
+                    balance: 0,
+                    clearedBalance: 0,
+                    lockedBalance: 0,
+                    currency: 'NGN',
+                });
+            }
+        }
+        catch (walletErr) {
+            console.warn('Could not create admin wallet:', walletErr);
+        }
         res.status(201).json({
             success: true,
             message: 'Admin user created successfully',
@@ -417,8 +447,10 @@ router.post('/admins', middleware_1.requireSuperAdmin, async (req, res) => {
                 email: admin.email,
                 firstName: admin.firstName,
                 lastName: admin.lastName,
+                phone: admin.phone,
                 role: admin.role,
                 status: admin.status,
+                createdAt: admin.createdAt,
             },
         });
     }
@@ -427,6 +459,170 @@ router.post('/admins', middleware_1.requireSuperAdmin, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to create admin user',
+        });
+    }
+});
+/**
+ * Get admin by ID
+ * GET /api/admin/admins/:id
+ */
+router.get('/admins/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const admin = await models_1.User.findOne({
+            _id: id,
+            role: { $in: ['admin', 'subadmin'] },
+        }).select('-passwordHash');
+        if (!admin) {
+            res.status(404).json({
+                success: false,
+                message: 'Admin user not found',
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            data: admin,
+        });
+    }
+    catch (error) {
+        console.error('Get admin by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get admin user',
+        });
+    }
+});
+/**
+ * Update admin user
+ * PUT /api/admin/admins/:id
+ */
+router.put('/admins/:id', middleware_1.requireSuperAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { firstName, lastName, email, phone, role, status, password } = req.body;
+        const targetAdmin = await models_1.User.findById(id);
+        if (!targetAdmin || !['admin', 'subadmin'].includes(targetAdmin.role)) {
+            res.status(404).json({
+                success: false,
+                message: 'Admin user not found',
+            });
+            return;
+        }
+        const isMasterAdmin = ['admin@vtstack.ng', 'aminuamee@yahoo.com'].includes(targetAdmin.email);
+        const isSelf = req.user.id === id;
+        // Prevent self-demotion or self-suspension
+        if (isSelf) {
+            if (role && role !== 'admin') {
+                res.status(400).json({
+                    success: false,
+                    message: 'You cannot change your own role to subadmin',
+                });
+                return;
+            }
+            if (status && status !== 'active') {
+                res.status(400).json({
+                    success: false,
+                    message: 'You cannot suspend or deactivate your own account',
+                });
+                return;
+            }
+        }
+        // Prevent modifying role or status of master admin by anyone else
+        if (isMasterAdmin && !isSelf) {
+            if (role && role !== targetAdmin.role) {
+                res.status(403).json({
+                    success: false,
+                    message: 'Cannot change the role of the master admin account',
+                });
+                return;
+            }
+            if (status && status !== targetAdmin.status) {
+                res.status(403).json({
+                    success: false,
+                    message: 'Cannot change the status of the master admin account',
+                });
+                return;
+            }
+        }
+        // Email validation & duplicate check
+        if (email) {
+            const formattedEmail = email.toLowerCase().trim();
+            if (!/^\S+@\S+\.\S+$/.test(formattedEmail)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid email address format',
+                });
+                return;
+            }
+            if (formattedEmail !== targetAdmin.email) {
+                if (isMasterAdmin) {
+                    res.status(403).json({
+                        success: false,
+                        message: 'Cannot change the email of the master admin account',
+                    });
+                    return;
+                }
+                const existingUser = await models_1.User.findOne({ email: formattedEmail, _id: { $ne: id } });
+                if (existingUser) {
+                    res.status(400).json({
+                        success: false,
+                        message: 'This email is already in use by another account',
+                    });
+                    return;
+                }
+                targetAdmin.email = formattedEmail;
+            }
+        }
+        if (firstName)
+            targetAdmin.firstName = firstName.trim();
+        if (lastName)
+            targetAdmin.lastName = lastName.trim();
+        if (firstName || lastName) {
+            targetAdmin.fullName = `${targetAdmin.firstName} ${targetAdmin.lastName}`.trim();
+        }
+        if (phone)
+            targetAdmin.phone = phone.trim();
+        if (role && ['admin', 'subadmin'].includes(role)) {
+            targetAdmin.role = role;
+        }
+        if (status && ['active', 'suspended', 'pending'].includes(status)) {
+            targetAdmin.status = status;
+        }
+        // Password update (optional)
+        if (password) {
+            if (password.length < 6) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Password must be at least 6 characters long',
+                });
+                return;
+            }
+            const salt = await bcryptjs_1.default.genSalt(10);
+            targetAdmin.passwordHash = await bcryptjs_1.default.hash(password, salt);
+        }
+        await targetAdmin.save();
+        res.json({
+            success: true,
+            message: 'Admin user updated successfully',
+            data: {
+                _id: targetAdmin._id,
+                email: targetAdmin.email,
+                firstName: targetAdmin.firstName,
+                lastName: targetAdmin.lastName,
+                phone: targetAdmin.phone,
+                role: targetAdmin.role,
+                status: targetAdmin.status,
+                createdAt: targetAdmin.createdAt,
+                updatedAt: targetAdmin.updatedAt,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Update admin error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update admin user',
         });
     }
 });
@@ -446,7 +642,7 @@ router.delete('/admins/:id', middleware_1.requireSuperAdmin, async (req, res) =>
             return;
         }
         const user = await models_1.User.findById(id);
-        if (!user || user.role !== 'admin') {
+        if (!user || !['admin', 'subadmin'].includes(user.role)) {
             res.status(404).json({
                 success: false,
                 message: 'Admin not found',
@@ -2417,6 +2613,27 @@ router.patch('/notifications/:id/read', middleware_1.authenticate, middleware_1.
     }
     catch (error) {
         res.status(500).json({ success: false, message: 'Failed to update notification' });
+    }
+});
+/**
+ * Trigger manual database backup
+ * POST /api/admin/backup
+ */
+router.post('/backup', middleware_1.authenticate, middleware_1.requireSuperAdmin, async (req, res) => {
+    try {
+        const result = await BackupService_1.backupService.createAndUploadBackup();
+        res.json({
+            success: true,
+            message: 'Database backup completed successfully',
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error('Manual backup error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to generate backup',
+        });
     }
 });
 exports.default = router;

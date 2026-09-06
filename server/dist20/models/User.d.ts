@@ -38,7 +38,7 @@ export interface IUserDocument extends Document {
     kycLevel: number;
     kyc_status: 'pending' | 'verified' | 'rejected';
     kyc_tier: 't1' | 't2' | 't3' | 'none';
-    role: 'user' | 'admin';
+    role: 'user' | 'admin' | 'subadmin';
     status: 'active' | 'suspended' | 'pending';
     savedBankDetails?: {
         bankCode: string;

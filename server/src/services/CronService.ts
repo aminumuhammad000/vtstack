@@ -217,20 +217,21 @@ export class CronService {
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    //  BACKUP JOB
+    //  BACKUP JOB (Every 24 Hours)
     // ──────────────────────────────────────────────────────────────────────
     public startBackupJob() {
-        this.backupTask = cron.schedule('0 * * * *', async () => {
+        // Runs every 24 hours at 02:00 AM
+        this.backupTask = cron.schedule('0 2 * * *', async () => {
             try {
-                logger.info('[CronService] Running Hourly Database Backup...');
+                logger.info('[CronService] Running 24-Hour Database Backup...');
                 await backupService.createAndUploadBackup();
-                logger.info('[CronService] Hourly Backup completed.');
+                logger.info('[CronService] 24-Hour Backup completed.');
             } catch (error: any) {
                 logger.error('[CronService] Backup Job error', error);
             }
         });
 
-        logger.info('[CronService] 💾 Backup Job scheduled (Every Hour).');
+        logger.info('[CronService] 💾 Backup Job scheduled (Every 24 hours at 02:00 AM).');
     }
 }
 

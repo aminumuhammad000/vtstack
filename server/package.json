@@ -8,8 +8,8 @@
     "build": "tsc && mkdir -p dist/config && cp src/config/*.pem dist/config/",
     "start": "node dist/server.js",
     "create-admin": "tsx src/scripts/create-admin.ts",
-    "change-email": "tsx src/scripts/change-email.ts",
-    "migrate:payouts": "tsx src/scripts/migratePayouts.ts",
+    "backup": "tsx src/scripts/backup.ts",
+    "google-token": "tsx src/scripts/generate-google-token.ts",
     "test": "echo \"No tests configured\" && exit 0"
   },
   "keywords": [

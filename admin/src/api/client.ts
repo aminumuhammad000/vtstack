@@ -103,8 +103,23 @@ export const adminApi = {
         return response.data.data!;
     },
 
+    getAdminById: async (id: string): Promise<Admin> => {
+        const response = await api.get<ApiResponse<Admin>>(`/admin/admins/${id}`);
+        return response.data.data!;
+    },
+
+    updateAdmin: async (id: string, data: any): Promise<Admin> => {
+        const response = await api.put<ApiResponse<Admin>>(`/admin/admins/${id}`, data);
+        return response.data.data!;
+    },
+
     deleteAdmin: async (id: string): Promise<void> => {
         await api.delete(`/admin/admins/${id}`);
+    },
+
+    triggerBackup: async (): Promise<any> => {
+        const response = await api.post<ApiResponse<any>>('/admin/backup');
+        return response.data;
     },
 
     getTenantById: async (id: string): Promise<TenantDetail> => {

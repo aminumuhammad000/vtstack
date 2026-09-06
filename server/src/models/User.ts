@@ -42,7 +42,7 @@ export interface IUserDocument extends Document {
     kycLevel: number; // 0: Registered, 1: Verified, 2: Submitted, 3: Approved
     kyc_status: 'pending' | 'verified' | 'rejected';
     kyc_tier: 't1' | 't2' | 't3' | 'none';
-    role: 'user' | 'admin';
+    role: 'user' | 'admin' | 'subadmin';
     status: 'active' | 'suspended' | 'pending';
     savedBankDetails?: {
         bankCode: string;
@@ -225,7 +225,7 @@ const UserSchema = new Schema<IUserDocument>(
         },
         role: {
             type: String,
-            enum: ['user', 'admin'],
+            enum: ['user', 'admin', 'subadmin'],
             default: 'user',
         },
         status: {

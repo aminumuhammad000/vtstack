@@ -232,20 +232,21 @@ class CronService {
         logger_1.logger.info('[CronService] 🔄 Reconciliation Job scheduled (Every 5 minutes).');
     }
     // ──────────────────────────────────────────────────────────────────────
-    //  BACKUP JOB
+    //  BACKUP JOB (Every 24 Hours)
     // ──────────────────────────────────────────────────────────────────────
     startBackupJob() {
-        this.backupTask = node_cron_1.default.schedule('0 * * * *', async () => {
+        // Runs every 24 hours at 02:00 AM
+        this.backupTask = node_cron_1.default.schedule('0 2 * * *', async () => {
             try {
-                logger_1.logger.info('[CronService] Running Hourly Database Backup...');
+                logger_1.logger.info('[CronService] Running 24-Hour Database Backup...');
                 await BackupService_1.backupService.createAndUploadBackup();
-                logger_1.logger.info('[CronService] Hourly Backup completed.');
+                logger_1.logger.info('[CronService] 24-Hour Backup completed.');
             }
             catch (error) {
                 logger_1.logger.error('[CronService] Backup Job error', error);
             }
         });
-        logger_1.logger.info('[CronService] 💾 Backup Job scheduled (Every Hour).');
+        logger_1.logger.info('[CronService] 💾 Backup Job scheduled (Every 24 hours at 02:00 AM).');
     }
 }
 exports.CronService = CronService;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminApi } from '../../api/client';
 import { toast } from 'react-hot-toast';
@@ -13,6 +13,17 @@ const ProfilePage: React.FC = () => {
         email: user?.email || '',
         phone: (user as any)?.phone || '',
     });
+
+    useEffect(() => {
+        if (user) {
+            setProfileData({
+                first_name: user.first_name || '',
+                last_name: user.last_name || '',
+                email: user.email || '',
+                phone: (user as any)?.phone || '',
+            });
+        }
+    }, [user]);
 
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
