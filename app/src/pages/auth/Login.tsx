@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { Loader2, AlertCircle, Mail, Lock, Check } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Lock, Check, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -11,6 +11,7 @@ export const Login: React.FC = () => {
         email: '',
         password: '',
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -134,14 +135,23 @@ export const Login: React.FC = () => {
                                 <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
                             </div>
                             <input
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
                                 placeholder="••••••••"
-                                className="w-full pl-11 pr-4 py-4 rounded-xl border-2 border-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-100/50 outline-none transition-all bg-gray-50/50 focus:bg-white font-medium text-gray-900 placeholder:text-gray-400"
+                                className="w-full pl-11 pr-11 py-4 rounded-xl border-2 border-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-100/50 outline-none transition-all bg-gray-50/50 focus:bg-white font-medium text-gray-900 placeholder:text-gray-400"
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                                tabIndex={-1}
+                                title={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                     </div>
 
