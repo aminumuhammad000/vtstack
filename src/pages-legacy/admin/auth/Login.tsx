@@ -77,7 +77,7 @@ const Login: React.FC = () => {
                                 {...register('email')}
                                 type="email"
                                 className={`w-full px-4 py-3 border ${errors.email ? 'border-red-500' : 'border-slate-300'} bg-white text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all`}
-                                placeholder="aminuamee@yahoo.com"
+                                placeholder="admin@vtstack.ng"
                             />
                             {errors.email && (
                                 <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
@@ -140,6 +140,23 @@ const Login: React.FC = () => {
                             )}
                         </button>
                     </form>
+
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+                            <p className="font-bold text-slate-700 flex items-center gap-1.5">
+                                <span>🔑</span> Default Admin Credentials:
+                            </p>
+                            <p className="font-mono text-slate-800">
+                                Email: <span className="font-bold text-primary-600">admin@vtstack.ng</span>
+                            </p>
+                            <p className="font-mono text-slate-800">
+                                Password: <span className="font-bold text-primary-600">password123</span>
+                            </p>
+                            <p className="text-[11px] text-slate-400 pt-1">
+                                Also accepts: <span className="text-slate-600">support@vtstack.ng</span> or <span className="text-slate-600">aminuamee@yahoo.com</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer */}
