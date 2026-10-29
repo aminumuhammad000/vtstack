@@ -169,6 +169,74 @@ export async function sendBroadcastEmail(recipients: string[], subject: string, 
   });
 }
 
+export async function sendWelcomeEmail(email: string, recipientName?: string) {
+  const name = recipientName || 'Valued Partner';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+  const loginUrl = `${appUrl}/login`;
+  const supportEmail = 'support@vtstack.ng';
+  const websiteUrl = 'https://vtstack.ng';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Next-Generation Virtual Accounts & Payments</p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 10px; padding: 24px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 14px 0; font-weight: 700;">Hi ${name},</h2>
+        <p style="color: #334155; font-size: 15px; margin: 0 0 12px 0; font-weight: 600;">Welcome to VTStack!</p>
+        <p style="color: #475569; font-size: 14px; margin: 0 0 16px 0; line-height: 1.6;">
+          We're excited to have you on board. VTStack is designed to help you build, manage, and scale your digital infrastructure with ease.
+        </p>
+        <p style="color: #475569; font-size: 14px; margin: 0 0 20px 0; line-height: 1.6;">
+          Your account has been created successfully, and you're ready to get started.
+        </p>
+
+        <h3 style="font-size: 14px; color: #1e293b; margin: 0 0 10px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">What's next?</h3>
+        <ul style="margin: 0 0 24px 0; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.8;">
+          <li>Explore your VTStack dashboard.</li>
+          <li>Configure your account settings.</li>
+          <li>Discover the tools and services available to you.</li>
+        </ul>
+
+        <div style="text-align: center; margin: 28px 0 20px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.25);">
+            Get Started
+          </a>
+        </div>
+
+        <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 16px 0;">
+          If you need assistance, our support team is here to help.
+        </p>
+        <p style="color: #334155; font-size: 13px; line-height: 1.5; margin: 0; font-weight: 500;">
+          Thank you for choosing VTStack!
+        </p>
+      </div>
+
+      <div style="color: #475569; font-size: 13px; line-height: 1.6; padding-top: 8px;">
+        <p style="margin: 0;">Best regards,</p>
+        <p style="margin: 0; font-weight: 700; color: #1e293b;">The VTStack Team</p>
+        <p style="margin: 4px 0 0 0;">
+          <a href="mailto:${supportEmail}" style="color: #4f46e5; text-decoration: none;">${supportEmail}</a><br />
+          <a href="${websiteUrl}" style="color: #4f46e5; text-decoration: none;">${websiteUrl}</a>
+        </p>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 11px; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 24px;">
+        &copy; ${new Date().getFullYear()} VTStack (vtstack.ng). All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Welcome to VTStack, ${name}!`,
+    html,
+    text: `Hi ${name},\n\nWelcome to VTStack!\n\nWe're excited to have you on board. VTStack is designed to help you build, manage, and scale your digital infrastructure with ease.\n\nYour account has been created successfully, and you're ready to get started.\n\nWhat's next?\n- Explore your VTStack dashboard.\n- Configure your account settings.\n- Discover the tools and services available to you.\n\nGet Started: ${loginUrl}\n\nIf you need assistance, our support team is here to help.\n\nThank you for choosing VTStack!\n\nBest regards,\nThe VTStack Team\n${supportEmail}\n${websiteUrl}`,
+  });
+}
+
 export async function sendAccountApprovedEmail(email: string, recipientName?: string) {
   const name = recipientName || 'Valued Partner';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
