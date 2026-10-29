@@ -164,7 +164,7 @@ class LocalStore {
   }
 
   private async seedDefaultData() {
-    // Default admin
+    // Default admin fallback for initial bootstrapping
     const adminId = '11111111-1111-1111-1111-111111111111';
     const adminUser: DbUser = {
       id: adminId,
@@ -194,87 +194,6 @@ class LocalStore {
       updatedAt: new Date().toISOString(),
     };
     this.users.set(adminId, adminUser);
-
-    // Default demo tenant
-    const demoId = '22222222-2222-2222-2222-222222222222';
-    const demoUser: DbUser = {
-      id: demoId,
-      email: 'merchant@example.com',
-      passwordHash: '$2a$10$QSv7ztwOYgMkraMRgnxxque7TfNdYkBFW/ObbbY3NThqR45L.r/hG', // password123
-      firstName: 'Apex',
-      lastName: 'Merchant',
-      fullName: 'Apex Merchant Store',
-      businessName: 'Apex Store Ltd',
-      phone: '+2348123456789',
-      role: 'user',
-      status: 'active',
-      kycLevel: 2,
-      kyc_status: 'verified',
-      kyc_tier: 't2',
-      isPayoutEnabled: true,
-      payoutRequestStatus: 'approved',
-      payoutIpWhitelist: [],
-      payoutDailyLimit: 1000000,
-      payoutHourlyLimit: 250000,
-      liveApiKey: 'vtp_live_98a72b1c8f4d5e6a7b8c',
-      testApiKey: 'vtp_test_12a34b5c6d7e8f9a0b1c',
-      webhookUrl: 'https://webhook.site/demo-endpoint',
-      webhookActive: true,
-      settlementEnabled: true,
-      isEmailVerified: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.users.set(demoId, demoUser);
-
-    const demoWallet: DbWallet = {
-      id: '33333333-3333-3333-3333-333333333333',
-      userId: demoId,
-      balance: 450000,
-      clearedBalance: 450000,
-      lockedBalance: 0,
-      currency: 'NGN',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.wallets.set(demoWallet.id, demoWallet);
-
-    const demoAccount: DbVirtualAccount = {
-      id: '44444444-4444-4444-4444-444444444444',
-      userId: demoId,
-      accountNumber: '9902345678',
-      accountName: 'VTStack - Apex Store Ltd',
-      bankName: 'PalmPay',
-      bankType: 'palmpay',
-      email: 'merchant@example.com',
-      alias: 'Main Collection Account',
-      reference: 'REF-VA-9902345',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.virtualAccounts.set(demoAccount.id, demoAccount);
-
-    // Initial transactions
-    const tx1: DbTransaction = {
-      id: '55555555-5555-5555-5555-555555555551',
-      walletId: demoWallet.id,
-      userId: demoId,
-      type: 'credit',
-      category: 'deposit',
-      amount: 150000,
-      fee: 250,
-      balanceBefore: 300000,
-      balanceAfter: 449750,
-      reference: 'TXN-DEP-849201',
-      customerReference: 'ORD-772184',
-      narration: 'Transfer from Jane Doe / PalmPay Deposit',
-      status: 'success',
-      isCleared: true,
-      clearedAt: new Date().toISOString(),
-      createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    };
-    this.transactions.set(tx1.id, tx1);
   }
 }
 
@@ -295,10 +214,11 @@ export const db = {
     async findById(id: string): Promise<DbUser | null> {
       if (isSupabaseConfigured()) {
         try {
-          const { data, error } = await supabaseAdmin.from('users').select('*').eq('id', id).single();
+          const { data, error } = await supabaseAdmin.from('users').select('*').eq('id', id).maybeSingle();
           if (data && !error) return mapSupabaseUserToDb(data);
-        } catch (e) {
-          // fallback
+          if (error) console.error('[DB:Supabase findById error]:', error.message);
+        } catch (e: any) {
+          console.error('[DB:Supabase findById exception]:', e.message);
         }
       }
       return store.users.get(id) || null;
@@ -308,10 +228,11 @@ export const db = {
       const normalized = email.toLowerCase().trim();
       if (isSupabaseConfigured()) {
         try {
-          const { data, error } = await supabaseAdmin.from('users').select('*').ilike('email', normalized).single();
+          const { data, error } = await supabaseAdmin.from('users').select('*').ilike('email', normalized).maybeSingle();
           if (data && !error) return mapSupabaseUserToDb(data);
-        } catch (e) {
-          // fallback
+          if (error) console.error('[DB:Supabase findByEmail error]:', error.message);
+        } catch (e: any) {
+          console.error('[DB:Supabase findByEmail exception]:', e.message);
         }
       }
       for (const u of store.users.values()) {
@@ -396,8 +317,13 @@ export const db = {
       if (isSupabaseConfigured()) {
         try {
           const sbData = mapDbUserToSupabase(newUser);
-          await supabaseAdmin.from('users').insert(sbData);
-        } catch (e) {}
+          const { error } = await supabaseAdmin.from('users').insert(sbData);
+          if (error) {
+            console.error('[DB:Supabase Error] Failed to insert user:', error.code, error.message, error.details);
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Exception] Failed to insert user:', e.message);
+        }
       }
       store.users.set(id, newUser);
       return newUser;
@@ -416,8 +342,13 @@ export const db = {
       if (isSupabaseConfigured()) {
         try {
           const sbData = mapDbUserToSupabase(updated);
-          await supabaseAdmin.from('users').update(sbData).eq('id', id);
-        } catch (e) {}
+          const { error } = await supabaseAdmin.from('users').update(sbData).eq('id', id);
+          if (error) {
+            console.error('[DB:Supabase Error] Failed to update user:', error.code, error.message);
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Exception] Failed to update user:', e.message);
+        }
       }
       store.users.set(id, updated);
       return updated;
@@ -438,9 +369,12 @@ export const db = {
     async findByUserId(userId: string): Promise<DbWallet | null> {
       if (isSupabaseConfigured()) {
         try {
-          const { data } = await supabaseAdmin.from('wallets').select('*').eq('user_id', userId).single();
-          if (data) return mapSupabaseWalletToDb(data);
-        } catch (e) {}
+          const { data, error } = await supabaseAdmin.from('wallets').select('*').eq('user_id', userId).maybeSingle();
+          if (data && !error) return mapSupabaseWalletToDb(data);
+          if (error) console.error('[DB:Supabase wallet findByUserId error]:', error.message);
+        } catch (e: any) {
+          console.error('[DB:Supabase wallet findByUserId exception]:', e.message);
+        }
       }
       for (const w of store.wallets.values()) {
         if (w.userId === userId) return w;
@@ -464,8 +398,13 @@ export const db = {
 
       if (isSupabaseConfigured()) {
         try {
-          await supabaseAdmin.from('wallets').insert(mapDbWalletToSupabase(newWallet));
-        } catch (e) {}
+          const { error } = await supabaseAdmin.from('wallets').insert(mapDbWalletToSupabase(newWallet));
+          if (error) {
+            console.error('[DB:Supabase Error] Failed to insert wallet:', error.code, error.message);
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Exception] Failed to insert wallet:', e.message);
+        }
       }
       store.wallets.set(id, newWallet);
       return newWallet;
@@ -506,9 +445,12 @@ export const db = {
     async findByAccountNumber(accountNumber: string): Promise<DbVirtualAccount | null> {
       if (isSupabaseConfigured()) {
         try {
-          const { data } = await supabaseAdmin.from('virtual_accounts').select('*').eq('account_number', accountNumber).single();
-          if (data) return mapSupabaseVirtualAccountToDb(data);
-        } catch (e) {}
+          const { data, error } = await supabaseAdmin.from('virtual_accounts').select('*').eq('account_number', accountNumber).maybeSingle();
+          if (data && !error) return mapSupabaseVirtualAccountToDb(data);
+          if (error) console.error('[DB:Supabase findByAccountNumber error]:', error.message);
+        } catch (e: any) {
+          console.error('[DB:Supabase findByAccountNumber exception]:', e.message);
+        }
       }
       for (const va of store.virtualAccounts.values()) {
         if (va.accountNumber === accountNumber) return va;
@@ -587,9 +529,12 @@ export const db = {
     async findById(id: string): Promise<DbTransaction | null> {
       if (isSupabaseConfigured()) {
         try {
-          const { data } = await supabaseAdmin.from('transactions').select('*').eq('id', id).single();
-          if (data) return mapSupabaseTxToDb(data);
-        } catch (e) {}
+          const { data, error } = await supabaseAdmin.from('transactions').select('*').eq('id', id).maybeSingle();
+          if (data && !error) return mapSupabaseTxToDb(data);
+          if (error) console.error('[DB:Supabase tx findById error]:', error.message);
+        } catch (e: any) {
+          console.error('[DB:Supabase tx findById exception]:', e.message);
+        }
       }
       return store.transactions.get(id) || null;
     },
