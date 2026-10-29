@@ -46,11 +46,18 @@ export async function POST(req: NextRequest) {
       isEmailVerified: true,
     });
 
-    // Send verification OTP email via Resend
+    // Send verification OTP email & Welcome email via Resend
     try {
       await sendOtpEmail(user.email, verificationToken);
     } catch (emailErr) {
       console.error('[Registration] Failed to send OTP email:', emailErr);
+    }
+
+    try {
+      const displayName = user.firstName || user.fullName || user.businessName || 'Valued Partner';
+      await sendWelcomeEmail(user.email, displayName);
+    } catch (welcomeErr) {
+      console.error('[Registration] Failed to send Welcome email:', welcomeErr);
     }
 
     // Create wallet
