@@ -84,7 +84,7 @@ export const VerifyEmail: React.FC = () => {
                 
                 <div className="bg-gray-50 py-6 text-center border-t border-gray-100">
                     <p className="text-sm font-medium text-gray-500">
-                        Need help? Contact <a href="mailto:vtstackltdng@gmail.com" className="text-primary-600 font-bold hover:underline">Support</a>
+                        Need help? Contact <a href="mailto:support@vtstack.ng" className="text-primary-600 font-bold hover:underline">Support</a>
                     </p>
                 </div>
             </div>

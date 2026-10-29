@@ -332,8 +332,8 @@ export const adminApi = {
         const response = await api.get<ApiResponse<any[]>>('/admin/help/messages');
         return response.data.data || [];
     },
-    updateHelpMessageStatus: async (id: string, status: string): Promise<any> => {
-        const response = await api.patch<ApiResponse<any>>(`/admin/help/messages/${id}/status`, { status });
+    updateHelpMessageStatus: async (id: string, status: string, adminNotes?: string): Promise<any> => {
+        const response = await api.patch<ApiResponse<any>>(`/admin/help/messages/${id}/status`, { status, adminNotes });
         return response.data.data;
     },
     getBanks: async (): Promise<any[]> => {

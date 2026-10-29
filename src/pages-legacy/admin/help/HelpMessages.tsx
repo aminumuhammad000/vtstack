@@ -15,6 +15,7 @@ interface HelpMessage {
     subject: string;
     message: string;
     status: 'pending' | 'in_progress' | 'resolved';
+    adminNotes?: string;
     createdAt: string;
 }
 
@@ -25,6 +26,7 @@ const HelpMessages: React.FC = () => {
     const [selectedMessage, setSelectedMessage] = useState<HelpMessage | null>(null);
     const [showDetails, setShowDetails] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [replyNotes, setReplyNotes] = useState('');
 
     useEffect(() => {
         fetchMessages();
@@ -46,15 +48,15 @@ const HelpMessages: React.FC = () => {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             setIsUpdating(true);
-            await adminApi.updateHelpMessageStatus(id, newStatus);
+            await adminApi.updateHelpMessageStatus(id, newStatus, replyNotes);
 
             const updatedMessages = messages.map(msg =>
-                msg._id === id ? { ...msg, status: newStatus as any } : msg
+                msg._id === id ? { ...msg, status: newStatus as any, adminNotes: replyNotes } : msg
             );
             setMessages(updatedMessages);
 
             if (selectedMessage && selectedMessage._id === id) {
-                setSelectedMessage({ ...selectedMessage, status: newStatus as any });
+                setSelectedMessage({ ...selectedMessage, status: newStatus as any, adminNotes: replyNotes });
             }
 
             toast.success(`Status updated to ${newStatus}`);
@@ -189,6 +191,7 @@ const HelpMessages: React.FC = () => {
                                             <button
                                                 onClick={() => {
                                                     setSelectedMessage(msg);
+                                                    setReplyNotes(msg.adminNotes || '');
                                                     setShowDetails(true);
                                                 }}
                                                 className="text-primary-600 hover:text-primary-900"
@@ -243,7 +246,19 @@ const HelpMessages: React.FC = () => {
                             </div>
 
                             <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-2">Update Status</h3>
+                                <h3 className="text-sm font-medium text-slate-700 mb-2">Admin Reply / Resolution Note</h3>
+                                <p className="text-xs text-slate-500 mb-2">This response will be visible to the user in their dashboard support history.</p>
+                                <textarea
+                                    value={replyNotes}
+                                    onChange={(e) => setReplyNotes(e.target.value)}
+                                    placeholder="Type your response or resolution note to the user here..."
+                                    rows={3}
+                                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-500 mb-2">Update Status & Save Reply</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <button
                                         onClick={() => handleStatusChange(selectedMessage._id, 'pending')}

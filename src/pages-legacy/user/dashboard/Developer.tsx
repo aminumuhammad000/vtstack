@@ -81,8 +81,9 @@ export const Developer: React.FC = () => {
     const fetchApiKey = async () => {
         try {
             const response = await api.get('/developer/apikey');
-            if (response.data.success) {
-                setApiKey(response.data.data.apiKey);
+            if (response.data.success && response.data.data) {
+                const key = response.data.data.apiKey || response.data.data.liveApiKey;
+                setApiKey(key);
             }
         } catch (error) {
             console.error('Error fetching API key:', error);
@@ -96,12 +97,15 @@ export const Developer: React.FC = () => {
 
         try {
             const response = await api.post('/developer/apikey');
-            if (response.data.success) {
-                setApiKey(response.data.data.apiKey);
+            if (response.data.success && response.data.data) {
+                const key = response.data.data.apiKey || response.data.data.liveApiKey;
+                setApiKey(key);
                 showNotification('API key generated successfully');
+            } else {
+                showNotification(response.data?.message || 'Failed to generate API key', 'error');
             }
-        } catch (error) {
-            showNotification('Failed to generate API key', 'error');
+        } catch (error: any) {
+            showNotification(error.response?.data?.message || 'Failed to generate API key', 'error');
         }
     };
 

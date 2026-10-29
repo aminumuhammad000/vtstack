@@ -31,24 +31,30 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
 
-    const { userId } = await req.json();
-    const liveKey = `vtp_live_${Math.random().toString(36).substring(2)}${Date.now().toString(36)}`;
-    const testKey = `vtp_test_${Math.random().toString(36).substring(2)}${Date.now().toString(36)}`;
-
-    if (userId) {
-      await db.users.update(userId, { liveApiKey: liveKey, testApiKey: testKey });
+    const body = await req.json();
+    const userId = body.userId || body.id;
+    if (!userId) {
+      return NextResponse.json({ success: false, message: 'User ID is required' }, { status: 400 });
     }
+
+    const liveKey = `vtp_live_${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
+    const testKey = `vtp_test_${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
+
+    await db.users.update(userId, { liveApiKey: liveKey, testApiKey: testKey, apiKey: liveKey });
 
     return NextResponse.json({
       success: true,
+      message: 'API Key generated successfully',
       data: {
-        id: userId || 'new-key',
+        id: userId,
+        _id: userId,
         liveKey,
         testKey,
         createdAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[API:AdminApiKeys error]:', error);
     return NextResponse.json({ success: false, message: 'Failed to generate API key' }, { status: 500 });
   }
 }

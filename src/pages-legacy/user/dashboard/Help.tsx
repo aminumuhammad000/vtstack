@@ -10,6 +10,9 @@ interface HelpMessage {
     message: string;
     status: 'pending' | 'in_progress' | 'resolved';
     createdAt: string;
+    direction?: 'sent' | 'received';
+    sender?: string;
+    adminReply?: string;
 }
 
 export const Help: React.FC = () => {
@@ -20,6 +23,8 @@ export const Help: React.FC = () => {
     const [error, setError] = useState('');
     const [messages, setMessages] = useState<HelpMessage[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+    const [filter, setFilter] = useState<'all' | 'sent' | 'received'>('all');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchMessages();
@@ -169,46 +174,132 @@ export const Help: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">Message History</h3>
-                                    <p className="text-xs text-gray-500">Track your support requests</p>
+                                    <p className="text-xs text-gray-500">Track sent tickets and replies from VTStack Support</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={fetchMessages}
-                                className="p-2.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
-                                title="Refresh messages"
-                            >
-                                <History size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilter('all')}
+                                        className={`px-3 py-1 rounded-lg transition-colors ${filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        All
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilter('sent')}
+                                        className={`px-3 py-1 rounded-lg transition-colors ${filter === 'sent' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        Sent by Me
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilter('received')}
+                                        className={`px-3 py-1 rounded-lg transition-colors ${filter === 'received' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        From Support
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={fetchMessages}
+                                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
+                                    title="Refresh messages"
+                                >
+                                    <History size={18} />
+                                </button>
+                            </div>
                         </div>
                         <div className="p-6 md:p-8">
                             {isLoadingMessages ? (
                                 <div className="flex justify-center py-12">
                                     <div className="w-10 h-10 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin"></div>
                                 </div>
-                            ) : messages.length > 0 ? (
-                                <div className="space-y-4">
-                                    {messages.map((msg) => (
-                                        <div key={msg._id} className="p-5 rounded-2xl border border-gray-100 hover:border-primary-200 hover:shadow-sm transition-all group bg-gray-50/50 hover:bg-white">
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
-                                                <span className="font-bold text-gray-900 text-sm md:text-base group-hover:text-primary-700 transition-colors">{msg.subject}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-xs font-medium text-gray-400">
-                                                        {new Date(msg.createdAt).toLocaleDateString()}
-                                                    </span>
-                                                    {getStatusBadge(msg.status)}
-                                                </div>
-                                            </div>
-                                            <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{msg.message}</p>
-                                        </div>
-                                    ))}
-                                </div>
                             ) : (
-                                <div className="text-center py-12">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
-                                        <MessageSquare size={32} />
-                                    </div>
-                                    <p className="text-sm font-bold text-gray-400">No messages yet.</p>
-                                </div>
+                                (() => {
+                                    const filtered = messages.filter((m) => {
+                                        if (filter === 'sent') return m.direction !== 'received';
+                                        if (filter === 'received') return m.direction === 'received';
+                                        return true;
+                                    });
+
+                                    if (filtered.length === 0) {
+                                        return (
+                                            <div className="text-center py-12">
+                                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                                                    <MessageSquare size={32} />
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-400">No support messages found.</p>
+                                                <p className="text-xs text-gray-400 mt-1">Submit a ticket using the form above to reach support.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="space-y-4">
+                                            {filtered.map((msg) => {
+                                                const isReceived = msg.direction === 'received';
+                                                const isExpanded = expandedId === msg._id;
+                                                return (
+                                                    <div
+                                                        key={msg._id}
+                                                        onClick={() => setExpandedId(isExpanded ? null : msg._id)}
+                                                        className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+                                                            isReceived
+                                                                ? 'border-indigo-100 bg-indigo-50/40 hover:border-indigo-300'
+                                                                : 'border-gray-100 bg-gray-50/50 hover:border-primary-200 hover:bg-white'
+                                                        }`}
+                                                    >
+                                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span
+                                                                    className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${
+                                                                        isReceived
+                                                                            ? 'bg-indigo-600 text-white'
+                                                                            : 'bg-slate-200 text-slate-700'
+                                                                    }`}
+                                                                >
+                                                                    {isReceived ? 'From Support' : 'Sent by You'}
+                                                                </span>
+                                                                <span className="font-bold text-gray-900 text-sm md:text-base">
+                                                                    {msg.subject}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs font-medium text-gray-400">
+                                                                    {new Date(msg.createdAt).toLocaleString()}
+                                                                </span>
+                                                                {getStatusBadge(msg.status)}
+                                                            </div>
+                                                        </div>
+
+                                                        <p className={`text-sm text-gray-700 leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'line-clamp-2'}`}>
+                                                            {msg.message}
+                                                        </p>
+
+                                                        {msg.adminReply && (
+                                                            <div className="mt-3 p-3.5 bg-green-50 border border-green-200 rounded-xl text-sm">
+                                                                <p className="text-xs font-bold text-green-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                                                    <CheckCircle size={14} className="text-green-600" />
+                                                                    VTStack Support Response:
+                                                                </p>
+                                                                <p className="text-green-900 leading-relaxed whitespace-pre-line">
+                                                                    {msg.adminReply}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="mt-2 text-right">
+                                                            <span className="text-[11px] text-primary-600 font-semibold hover:underline">
+                                                                {isExpanded ? 'Show Less ▲' : 'Read Full Thread ▼'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()
                             )}
                         </div>
                     </div>
@@ -241,8 +332,8 @@ export const Help: React.FC = () => {
                                 <Phone size={24} />
                             </div>
                             <h3 className="text-xl font-bold mb-2">WhatsApp / Call</h3>
-                            <p className="text-green-100 text-sm mb-6 font-medium">+234 707 024 9434</p>
-                            <a href="https://wa.me/2347070249434" target="_blank" rel="noopener noreferrer" className="w-full py-3.5 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition-all shadow-lg transform active:scale-95 text-sm flex items-center justify-center gap-2">
+                            <p className="text-green-100 text-sm mb-6 font-medium">08024230597</p>
+                            <a href="https://wa.me/2348024230597" target="_blank" rel="noopener noreferrer" className="w-full py-3.5 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition-all shadow-lg transform active:scale-95 text-sm flex items-center justify-center gap-2">
                                 Message on WhatsApp
                             </a>
                         </div>
@@ -257,8 +348,8 @@ export const Help: React.FC = () => {
                                 <Mail size={24} />
                             </div>
                             <h3 className="text-xl font-bold mb-2">Email Support</h3>
-                            <p className="text-primary-100 text-sm mb-6 font-medium">vtstackltdng@gmail.com</p>
-                            <a href="mailto:vtstackltdng@gmail.com" className="w-full py-3.5 bg-white text-primary-700 font-bold rounded-xl hover:bg-primary-50 transition-all shadow-lg transform active:scale-95 text-sm flex items-center justify-center gap-2">
+                            <p className="text-primary-100 text-sm mb-6 font-medium">support@vtstack.ng</p>
+                            <a href="mailto:support@vtstack.ng" className="w-full py-3.5 bg-white text-primary-700 font-bold rounded-xl hover:bg-primary-50 transition-all shadow-lg transform active:scale-95 text-sm flex items-center justify-center gap-2">
                                 Send Email
                                 <Send size={16} />
                             </a>

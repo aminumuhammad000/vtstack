@@ -63,7 +63,7 @@ export const Contact: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-gray-900">Email Us</h4>
-                                        <a href="mailto:vtstackltdng@gmail.com" className="text-gray-600 hover:text-primary-600 transition-colors">vtstackltdng@gmail.com</a>
+                                        <a href="mailto:support@vtstack.ng" className="text-gray-600 hover:text-primary-600 transition-colors">support@vtstack.ng</a>
                                     </div>
                                 </div>
 
@@ -73,7 +73,7 @@ export const Contact: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-gray-900">WhatsApp / Call</h4>
-                                        <p className="text-gray-600">+234 707 024 9434</p>
+                                        <a href="https://wa.me/2348024230597" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-primary-600 transition-colors">08024230597</a>
                                         <p className="text-gray-500 text-sm">Mon - Fri, 9am - 6pm</p>
                                     </div>
                                 </div>

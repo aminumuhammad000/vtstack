@@ -667,17 +667,91 @@ export const db = {
   // Help Messages
   help: {
     async findAll() {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin.from('help_messages').select('*').order('created_at', { ascending: false });
+          if (data && !error) {
+            return data.map((m: any) => ({
+              id: m.id,
+              _id: m.id,
+              userId: m.user_id,
+              subject: m.subject,
+              message: m.message,
+              status: m.status,
+              adminNotes: m.admin_notes,
+              createdAt: m.created_at,
+              updatedAt: m.updated_at,
+            }));
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] help.findAll:', e.message);
+        }
+      }
       return store.helpMessages;
     },
+
+    async findByUserId(userId: string) {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin.from('help_messages').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+          if (data && !error) {
+            return data.map((m: any) => ({
+              id: m.id,
+              _id: m.id,
+              userId: m.user_id,
+              subject: m.subject,
+              message: m.message,
+              status: m.status,
+              adminNotes: m.admin_notes,
+              createdAt: m.created_at,
+              updatedAt: m.updated_at,
+            }));
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] help.findByUserId:', e.message);
+        }
+      }
+      return store.helpMessages.filter((m: any) => m.userId === userId);
+    },
+
     async create(data: any) {
-      const item = { id: uuidv4(), status: 'open', createdAt: new Date().toISOString(), ...data };
+      const id = data.id || uuidv4();
+      const now = new Date().toISOString();
+      const item = { id, _id: id, status: data.status || 'pending', createdAt: now, updatedAt: now, ...data };
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseAdmin.from('help_messages').insert({
+            id,
+            user_id: data.userId || null,
+            subject: data.subject,
+            message: data.message,
+            status: data.status || 'open',
+            admin_notes: data.adminNotes || null,
+            created_at: now,
+            updated_at: now,
+          });
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] Failed to insert help message:', e.message);
+        }
+      }
       store.helpMessages.unshift(item);
       return item;
     },
-    async updateStatus(id: string, status: string) {
+
+    async updateStatus(id: string, status: string, adminNotes?: string) {
+      if (isSupabaseConfigured()) {
+        try {
+          const updatePayload: any = { status, updated_at: new Date().toISOString() };
+          if (adminNotes !== undefined) updatePayload.admin_notes = adminNotes;
+          await supabaseAdmin.from('help_messages').update(updatePayload).eq('id', id);
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] Failed to update help message status:', e.message);
+        }
+      }
       const item = store.helpMessages.find(m => m.id === id);
       if (item) {
         item.status = status;
+        if (adminNotes !== undefined) item.adminNotes = adminNotes;
         item.updatedAt = new Date().toISOString();
         return item;
       }
@@ -688,10 +762,75 @@ export const db = {
   // Communications
   communications: {
     async findAll() {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin.from('communications').select('*').order('created_at', { ascending: false });
+          if (data && !error) {
+            return data.map((c: any) => ({
+              id: c.id,
+              _id: c.id,
+              userId: c.recipient_id || c.sender_id,
+              recipientId: c.recipient_id,
+              senderId: c.sender_id,
+              subject: c.subject,
+              message: c.message,
+              type: c.type,
+              status: c.status,
+              createdAt: c.created_at,
+            }));
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] communications.findAll:', e.message);
+        }
+      }
       return store.communications;
     },
+
+    async findByUserId(userId: string) {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin.from('communications').select('*').or(`recipient_id.eq.${userId},sender_id.eq.${userId}`).order('created_at', { ascending: false });
+          if (data && !error) {
+            return data.map((c: any) => ({
+              id: c.id,
+              _id: c.id,
+              userId: c.recipient_id || c.sender_id,
+              recipientId: c.recipient_id,
+              senderId: c.sender_id,
+              subject: c.subject,
+              message: c.message,
+              type: c.type,
+              status: c.status,
+              createdAt: c.created_at,
+            }));
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] communications.findByUserId:', e.message);
+        }
+      }
+      return store.communications.filter((c: any) => c.userId === userId || c.recipientId === userId);
+    },
+
     async create(data: any) {
-      const item = { id: uuidv4(), createdAt: new Date().toISOString(), ...data };
+      const id = data.id || uuidv4();
+      const now = new Date().toISOString();
+      const item = { id, _id: id, createdAt: now, ...data };
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseAdmin.from('communications').insert({
+            id,
+            sender_id: data.senderId || null,
+            recipient_id: data.recipientId || data.userId || null,
+            subject: data.subject,
+            message: data.message,
+            type: data.type || 'email',
+            status: data.status || 'sent',
+            created_at: now,
+          });
+        } catch (e: any) {
+          console.error('[DB:Supabase Error] Failed to insert communication:', e.message);
+        }
+      }
       store.communications.unshift(item);
       return item;
     }

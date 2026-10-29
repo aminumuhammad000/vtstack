@@ -8,9 +8,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!admin) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, adminNotes } = await req.json();
 
-    const updated = await db.help.updateStatus(id, status);
+    const updated = await db.help.updateStatus(id, status, adminNotes);
     return NextResponse.json({ success: true, message: 'Status updated', data: updated });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Failed to update help message status' }, { status: 500 });
