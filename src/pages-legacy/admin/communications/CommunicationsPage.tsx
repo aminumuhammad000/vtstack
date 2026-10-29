@@ -90,22 +90,22 @@ const CommunicationsPage: React.FC = () => {
         setSending(true);
 
         try {
-            await adminApi.sendBulkEmail({
+            const res = await adminApi.sendBulkEmail({
                 recipientType,
                 selectedTenants,
                 subject,
                 message,
             });
-            toast.success('Email sent successfully!');
+            toast.success(res?.message || 'Email sent successfully!');
             setSubject('');
             setMessage('');
             setRecipientType('all');
             setSelectedTenants([]);
             // Refresh recent communications
             fetchRecentCommunications();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to send email:', error);
-            toast.error('Failed to send email');
+            toast.error(error.response?.data?.message || 'Failed to send email');
         } finally {
             setSending(false);
         }
