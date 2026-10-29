@@ -168,3 +168,202 @@ export async function sendBroadcastEmail(recipients: string[], subject: string, 
     text: message,
   });
 }
+
+export async function sendAccountApprovedEmail(email: string, recipientName?: string) {
+  const name = recipientName || 'Valued Partner';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+  const loginUrl = `${appUrl}/login`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Next-Generation Virtual Accounts & Payments</p>
+      </div>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #22c55e; border-radius: 50%; margin-bottom: 12px; color: #ffffff; font-size: 22px; font-weight: bold;">
+          ✓
+        </div>
+        <h2 style="font-size: 20px; color: #15803d; margin: 0 0 8px 0; font-weight: 700;">Account Approved & Activated!</h2>
+        <p style="color: #166534; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, your VTStack merchant account has been reviewed and approved by our administration team.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <h3 style="font-size: 15px; color: #1e293b; margin: 0 0 12px 0; font-weight: 600;">What you can do now:</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.8;">
+          <li>Generate dynamic and dedicated <strong>Virtual Accounts</strong></li>
+          <li>Accept real-time bank transfer payments seamlessly</li>
+          <li>Access live & test <strong>API Keys</strong> for integration</li>
+          <li>Configure Webhooks to automate your financial operations</li>
+          <li>Monitor your wallet, balances, and payouts in real-time</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">
+          Access Your Dashboard
+        </a>
+      </div>
+
+      <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 16px 0; text-align: center;">
+        Direct link: <a href="${loginUrl}" style="color: #4f46e5; word-break: break-all;">${loginUrl}</a>
+      </p>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        <p style="margin: 0 0 4px 0;">Need assistance? Reply to this email or contact <a href="mailto:support@vtstack.ng" style="color: #64748b;">support@vtstack.ng</a>.</p>
+        <p style="margin: 0;">&copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Your VTStack Account Has Been Approved!`,
+    html,
+    text: `Hello ${name},\n\nYour VTStack merchant account has been approved and activated by the administrator!\n\nYou can now log in at ${loginUrl} to access virtual accounts, generate API keys, and manage payments.\n\nBest regards,\nVTStack Team`,
+  });
+}
+
+export async function sendKycApprovedEmail(email: string, recipientName?: string, tier?: number | string) {
+  const name = recipientName || 'Valued Partner';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+  const tierDisplay = tier ? `Tier ${tier}` : 'Full Verification';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">KYC Verification Update</p>
+      </div>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #22c55e; border-radius: 50%; margin-bottom: 12px; color: #ffffff; font-size: 22px; font-weight: bold;">
+          ✓
+        </div>
+        <h2 style="font-size: 20px; color: #15803d; margin: 0 0 8px 0; font-weight: 700;">KYC Verified Successfully</h2>
+        <p style="color: #166534; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, your identity verification (${tierDisplay}) has been approved by our compliance department.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <p style="color: #334155; font-size: 14px; line-height: 1.6; margin: 0;">
+          Your higher transaction and withdrawal limits are now unlocked and active across your VTStack account. You can verify your updated limits in your dashboard settings.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${appUrl}/app" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px;">
+          Open User Dashboard
+        </a>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Your VTStack KYC Verification Has Been Approved (${tierDisplay})`,
+    html,
+    text: `Hello ${name},\n\nYour KYC verification (${tierDisplay}) has been approved by VTStack compliance. Higher limits are now active on your account.\n\nAccess your dashboard: ${appUrl}/app`,
+  });
+}
+
+export async function sendKycRejectedEmail(email: string, recipientName?: string, reason?: string) {
+  const name = recipientName || 'Valued Partner';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+  const defaultReason = reason || 'Document image was unreadable or details did not match.';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">KYC Verification Notice</p>
+      </div>
+
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <h2 style="font-size: 18px; color: #991b1b; margin: 0 0 8px 0; font-weight: 700;">KYC Documents Require Attention</h2>
+        <p style="color: #7f1d1d; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, our compliance team was unable to verify your submitted KYC documents.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 6px 0; font-weight: 600; text-transform: uppercase;">Reason:</p>
+        <p style="color: #334155; font-size: 14px; line-height: 1.6; margin: 0;">
+          ${defaultReason}
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${appUrl}/app/verification" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px;">
+          Resubmit Verification
+        </a>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `VTStack KYC Verification Update - Action Needed`,
+    html,
+    text: `Hello ${name},\n\nOur compliance team was unable to verify your KYC documents: ${defaultReason}\n\nPlease visit ${appUrl}/app/verification to resubmit.`,
+  });
+}
+
+export async function sendPayoutApprovedEmail(email: string, recipientName?: string) {
+  const name = recipientName || 'Valued Partner';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Payout API Access</p>
+      </div>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #22c55e; border-radius: 50%; margin-bottom: 12px; color: #ffffff; font-size: 22px; font-weight: bold;">
+          ✓
+        </div>
+        <h2 style="font-size: 20px; color: #15803d; margin: 0 0 8px 0; font-weight: 700;">Payout API Access Approved</h2>
+        <p style="color: #166534; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, your request for automated programmatic Payouts has been approved by administration.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <p style="color: #334155; font-size: 14px; line-height: 1.6; margin: 0;">
+          You can now initiate bulk payouts and single transfers directly through our Payout APIs using your live API key.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${appUrl}/app/payout" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px;">
+          Manage Payouts
+        </a>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Your VTStack Payout API Access Has Been Approved!`,
+    html,
+    text: `Hello ${name},\n\nYour request for automated programmatic Payouts has been approved! You can now initiate transfers via the API or dashboard at ${appUrl}/app/payout.`,
+  });
+}

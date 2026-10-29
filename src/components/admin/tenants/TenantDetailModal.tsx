@@ -511,7 +511,10 @@ const TenantDetailModal: React.FC<TenantDetailModalProps> = ({
                             <div className="pt-6 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-3 pb-8">
                                 {fullTenant.status !== 'active' && (
                                     <button
-                                        onClick={() => onStatusChange(fullTenant._id, 'active')}
+                                        onClick={async () => {
+                                            await onStatusChange(fullTenant._id, 'active');
+                                            refetchDetail();
+                                        }}
                                         className="px-4 py-2.5 bg-slate-100 text-slate-900 rounded-xl hover:bg-slate-200 transition-colors text-sm font-bold shadow-sm"
                                     >
                                         Activate Account
@@ -519,7 +522,10 @@ const TenantDetailModal: React.FC<TenantDetailModalProps> = ({
                                 )}
                                 {fullTenant.status !== 'suspended' && (
                                     <button
-                                        onClick={() => onStatusChange(fullTenant._id, 'suspended')}
+                                        onClick={async () => {
+                                            await onStatusChange(fullTenant._id, 'suspended');
+                                            refetchDetail();
+                                        }}
                                         className="px-4 py-2.5 bg-yellow-50 text-yellow-700 rounded-xl hover:bg-yellow-100 transition-colors text-sm font-bold shadow-sm"
                                     >
                                         Suspend Account
@@ -833,7 +839,10 @@ const TenantDetailModal: React.FC<TenantDetailModalProps> = ({
                             <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
                                 {fullTenant.kyc_status !== 'verified' && (
                                     <button
-                                        onClick={() => onKycStatusChange(fullTenant._id, 'verified')}
+                                        onClick={async () => {
+                                            await onKycStatusChange(fullTenant._id, 'verified');
+                                            refetchDetail();
+                                        }}
                                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                                     >
                                         Approve KYC
@@ -841,7 +850,10 @@ const TenantDetailModal: React.FC<TenantDetailModalProps> = ({
                                 )}
                                 {fullTenant.kyc_status !== 'rejected' && (
                                     <button
-                                        onClick={() => onKycStatusChange(fullTenant._id, 'rejected')}
+                                        onClick={async () => {
+                                            await onKycStatusChange(fullTenant._id, 'rejected');
+                                            refetchDetail();
+                                        }}
                                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                                     >
                                         Reject KYC
