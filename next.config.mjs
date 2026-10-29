@@ -36,6 +36,16 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    const vpsUrl = process.env.VPS_API_URL || process.env.BACKEND_API_URL;
+    if (!vpsUrl) return [];
+    return [
+      {
+        source: '/gateway/:path*',
+        destination: `${vpsUrl}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

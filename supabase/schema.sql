@@ -1,5 +1,8 @@
--- VTStack Supabase Database Schema
--- Run this in your Supabase SQL editor or via Supabase CLI
+-- ==============================================================================
+-- VTStack Complete Supabase Database Schema
+-- Run this script in your Supabase SQL Editor:
+-- https://supabase.com/dashboard/project/ufkknsbtvhqqdrochjzu/sql
+-- ==============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -159,23 +162,38 @@ CREATE TABLE IF NOT EXISTS fee_rules (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. System Settings Table
-CREATE TABLE IF NOT EXISTS system_settings (
+-- 8. Risk Rules Table
+CREATE TABLE IF NOT EXISTS risk_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key TEXT UNIQUE NOT NULL DEFAULT 'global',
-    general JSONB DEFAULT '{"companyName":"VTStack Systems","supportEmail":"support@vtpay.com","currency":"NGN","timezone":"Africa/Lagos","maintenanceMode":false}'::jsonb,
-    notifications JSONB DEFAULT '{"emailAlerts":true,"slackIntegration":false,"webhookRetries":3,"dailyReports":true}'::jsonb,
-    security JSONB DEFAULT '{"twoFactorAuth":false,"sessionTimeout":30,"passwordExpiry":90,"ipWhitelist":""}'::jsonb,
-    parent_account JSONB DEFAULT '{"accountName":"","accountNumber":"","bankCode":"","type":"PRIMARY","status":"ACTIVE"}'::jsonb,
-    global_settlement JSONB DEFAULT '{"status":false,"weekendSettlementEnabled":false,"scheduleType":"T1","schedulePeriod":"Daily","settlementAccounts":[]}'::jsonb,
-    email_config JSONB DEFAULT '{"provider":"gmail"}'::jsonb,
-    payout JSONB DEFAULT '{"minAmount":100,"vtpayFeePercent":0.5,"bankSettlementFee":10,"bankSettlementThreshold":1000,"payoutTierStep":2500,"payoutTierFeeStep":25}'::jsonb,
-    deposit JSONB DEFAULT '{"vtpayFeePercent":1.0,"virtualAccountChargePercent":0.5}'::jsonb,
-    kyc_tier_limits JSONB DEFAULT '{}'::jsonb,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('velocity', 'amount_limit', 'blacklist', 'whitelist', 'geo_block')),
+    condition TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('block', 'flag', 'review')),
+    priority INTEGER DEFAULT 1,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    hits INTEGER DEFAULT 0,
+    last_triggered TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 9. Notifications Table
+-- 9. System Settings Table
+CREATE TABLE IF NOT EXISTS system_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key TEXT UNIQUE NOT NULL DEFAULT 'global',
+    general JSONB DEFAULT '{"companyName":"VTStack Systems","supportEmail":"support@vtstack.ng","currency":"NGN","timezone":"Africa/Lagos","maintenanceMode":false}'::jsonb,
+    notifications JSONB DEFAULT '{"emailAlerts":true,"slackIntegration":false,"webhookRetries":3,"dailyReports":true}'::jsonb,
+    security JSONB DEFAULT '{"twoFactorAuth":false,"sessionTimeout":30,"passwordExpiry":90,"ipWhitelist":""}'::jsonb,
+    parent_account JSONB DEFAULT '{"accountName":"VTStack Operations","accountNumber":"9901827364","bankCode":"999992","type":"PRIMARY","status":"ACTIVE"}'::jsonb,
+    global_settlement JSONB DEFAULT '{"status":false,"weekendSettlementEnabled":false,"scheduleType":"T1","schedulePeriod":"Daily","settlementAccounts":[]}'::jsonb,
+    email_config JSONB DEFAULT '{"provider":"resend","fromEmail":"VTStack <onboarding@resend.dev>"}'::jsonb,
+    payout JSONB DEFAULT '{"minAmount":100,"vtpayFeePercent":0.5,"bankSettlementFee":10,"bankSettlementThreshold":1000,"payoutTierStep":2500,"payoutTierFeeStep":25}'::jsonb,
+    deposit JSONB DEFAULT '{"vtpayFeePercent":1.0,"virtualAccountChargePercent":0.5}'::jsonb,
+    kyc_tier_limits JSONB DEFAULT '{"t1":{"dailyWithdrawalLimit":50000,"monthlyWithdrawalLimit":500000,"dailyDepositLimit":100000,"monthlyDepositLimit":1000000},"t2":{"dailyWithdrawalLimit":200000,"monthlyWithdrawalLimit":2000000,"dailyDepositLimit":500000,"monthlyDepositLimit":5000000},"t3":{"dailyWithdrawalLimit":1000000,"monthlyWithdrawalLimit":10000000,"dailyDepositLimit":5000000,"monthlyDepositLimit":50000000}}'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -186,7 +204,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 10. Help Messages Table
+-- 11. Help Messages Table
 CREATE TABLE IF NOT EXISTS help_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -198,7 +216,7 @@ CREATE TABLE IF NOT EXISTS help_messages (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 11. Disputes Table
+-- 12. Disputes Table
 CREATE TABLE IF NOT EXISTS disputes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
@@ -210,7 +228,7 @@ CREATE TABLE IF NOT EXISTS disputes (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 12. Communications Table
+-- 13. Communications Table
 CREATE TABLE IF NOT EXISTS communications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID,
@@ -222,7 +240,7 @@ CREATE TABLE IF NOT EXISTS communications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 13. Webhook Logs Table
+-- 14. Webhook Logs Table
 CREATE TABLE IF NOT EXISTS webhook_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event TEXT NOT NULL,
@@ -234,8 +252,39 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes for fast lookups
+-- 15. Ledger Table (Double-Entry Bookkeeping)
+CREATE TABLE IF NOT EXISTS ledgers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_id UUID REFERENCES wallets(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    reference TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('CREDIT', 'DEBIT')),
+    purpose TEXT NOT NULL,
+    balance_before NUMERIC NOT NULL,
+    balance_after NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 16. Parent Account Ledger
+CREATE TABLE IF NOT EXISTS parent_account_ledgers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_number TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('CREDIT', 'DEBIT')),
+    category TEXT NOT NULL,
+    reference TEXT NOT NULL,
+    narration TEXT,
+    balance_before NUMERIC DEFAULT 0,
+    balance_after NUMERIC DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for lightning fast lookups
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
+CREATE INDEX IF NOT EXISTS idx_users_live_api_key ON users(live_api_key);
 CREATE INDEX IF NOT EXISTS idx_virtual_accounts_account_number ON virtual_accounts(account_number);
 CREATE INDEX IF NOT EXISTS idx_virtual_accounts_user_id ON virtual_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
@@ -244,3 +293,4 @@ CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_a
 CREATE INDEX IF NOT EXISTS idx_payouts_user_id ON payouts(user_id);
 CREATE INDEX IF NOT EXISTS idx_payouts_reference ON payouts(reference);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledgers_wallet_id ON ledgers(wallet_id);

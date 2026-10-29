@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
       phone: a.phone,
       status: a.status,
       role: a.role,
+      apiKey: a.apiKey || a.liveApiKey,
+      liveApiKey: a.liveApiKey,
+      testApiKey: a.testApiKey,
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
     }));
@@ -40,12 +43,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, password, firstName, lastName, phone, role } = body;
+    const { email, password, firstName, lastName, phone, role, liveApiKey: customLiveKey, testApiKey: customTestKey } = body;
 
     const existing = await db.users.findByEmail(email);
     if (existing) {
       return NextResponse.json({ success: false, message: 'Email already exists' }, { status: 400 });
     }
+
+    const randomSuffix = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    const liveApiKey = customLiveKey || `vtp_live_admin_${randomSuffix}`;
+    const testApiKey = customTestKey || `vtp_test_admin_${randomSuffix}`;
 
     const passwordHash = await hashPassword(password || 'password123');
     const newAdmin = await db.users.create({
@@ -55,15 +62,20 @@ export async function POST(req: NextRequest) {
       lastName: lastName || '',
       fullName: `${firstName || ''} ${lastName || ''}`.trim(),
       phone: phone || '',
-      role: role || 'subadmin',
+      role: role || 'admin',
       status: 'active',
       kycLevel: 3,
       kyc_status: 'verified',
+      kyc_tier: 't3',
+      isPayoutEnabled: true,
+      apiKey: liveApiKey,
+      liveApiKey,
+      testApiKey,
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Admin created successfully',
+      message: 'Admin created successfully with API key configured',
       data: {
         _id: newAdmin.id,
         id: newAdmin.id,
@@ -73,6 +85,9 @@ export async function POST(req: NextRequest) {
         phone: newAdmin.phone,
         status: newAdmin.status,
         role: newAdmin.role,
+        apiKey: newAdmin.apiKey,
+        liveApiKey: newAdmin.liveApiKey,
+        testApiKey: newAdmin.testApiKey,
         createdAt: newAdmin.createdAt,
         updatedAt: newAdmin.updatedAt,
       },

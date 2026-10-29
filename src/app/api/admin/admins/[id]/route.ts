@@ -25,6 +25,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         phone: target.phone,
         status: target.status,
         role: target.role,
+        apiKey: target.apiKey || target.liveApiKey,
+        liveApiKey: target.liveApiKey,
+        testApiKey: target.testApiKey,
         createdAt: target.createdAt,
         updatedAt: target.updatedAt,
       },
@@ -48,6 +51,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.role) updates.role = body.role;
     if (body.status) updates.status = body.status;
     if (body.password) updates.passwordHash = await hashPassword(body.password);
+    if (body.liveApiKey) {
+      updates.liveApiKey = body.liveApiKey;
+      updates.apiKey = body.liveApiKey;
+    }
+    if (body.testApiKey) updates.testApiKey = body.testApiKey;
 
     const updated = await db.users.update(id, updates);
     if (!updated) return NextResponse.json({ success: false, message: 'Admin not found' }, { status: 404 });

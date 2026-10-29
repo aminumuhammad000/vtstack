@@ -141,7 +141,11 @@ class LocalStore {
     security: { twoFactorAuth: false, sessionTimeout: 30, passwordExpiry: 90, ipWhitelist: '' },
     parentAccount: { accountName: 'VTStack Operations', accountNumber: '9901827364', bankCode: '999992', type: 'PRIMARY', status: 'ACTIVE' },
     globalSettlement: { status: false, weekendSettlementEnabled: false, scheduleType: 'T1', schedulePeriod: 'Daily', settlementAccounts: [] },
-    emailConfig: { provider: 'gmail' },
+    emailConfig: {
+      provider: 'resend',
+      resendApiKey: process.env.RESEND_API_KEY || '',
+      fromEmail: 'VTStack <support@vtstack.ng>',
+    },
     payout: { minAmount: 100, vtpayFeePercent: 0.5, bankSettlementFee: 10, bankSettlementThreshold: 1000, payoutTierStep: 2500, payoutTierFeeStep: 25 },
     deposit: { vtpayFeePercent: 1.0, virtualAccountChargePercent: 0.5 },
     kycTierLimits: {
@@ -183,6 +187,9 @@ class LocalStore {
       webhookActive: true,
       settlementEnabled: true,
       isEmailVerified: true,
+      apiKey: 'vtp_live_admin_98a72b1c8f4d5e6a7b8c',
+      liveApiKey: 'vtp_live_admin_98a72b1c8f4d5e6a7b8c',
+      testApiKey: 'vtp_test_admin_12a34b5c6d7e8f9a0b1c',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -275,7 +282,10 @@ const store = new LocalStore();
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return Boolean(url && !url.includes('placeholder') && key && !key.includes('placeholder'));
 };
 
@@ -306,6 +316,29 @@ export const db = {
       }
       for (const u of store.users.values()) {
         if (u.email.toLowerCase() === normalized) return u;
+      }
+      return null;
+    },
+
+    async findByApiKey(key: string): Promise<DbUser | null> {
+      if (!key) return null;
+      const cleanKey = key.trim();
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin
+            .from('users')
+            .select('*')
+            .or(`api_key.eq.${cleanKey},live_api_key.eq.${cleanKey},test_api_key.eq.${cleanKey}`)
+            .maybeSingle();
+          if (data && !error) return mapSupabaseUserToDb(data);
+        } catch (e) {
+          // fallback to memory
+        }
+      }
+      for (const u of store.users.values()) {
+        if (u.apiKey === cleanKey || u.liveApiKey === cleanKey || u.testApiKey === cleanKey) {
+          return u;
+        }
       }
       return null;
     },
