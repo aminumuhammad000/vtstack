@@ -158,6 +158,8 @@ class LocalStore {
   communications: any[] = [];
   disputes: any[] = [];
   webhooks: any[] = [];
+  userNotifications: any[] = [];
+  userReadNotificationIds: Map<string, Set<string>> = new Map();
 
   constructor() {
     this.seedDefaultData();
@@ -845,6 +847,135 @@ export const db = {
       const item = { id: uuidv4(), createdAt: new Date().toISOString(), ...data };
       store.webhooks.unshift(item);
       return item;
+    }
+  },
+
+  // User Notifications
+  notifications: {
+    async findByUserId(userId: string) {
+      let readSet = store.userReadNotificationIds.get(userId);
+      if (!readSet) {
+        readSet = new Set<string>();
+        store.userReadNotificationIds.set(userId, readSet);
+      }
+
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin
+            .from('notifications')
+            .select('*')
+            .or(`user_id.eq.${userId},user_id.is.null,user_id.eq.all`)
+            .order('created_at', { ascending: false });
+
+          if (data && !error && data.length > 0) {
+            return data.map((n: any) => ({
+              id: n.id,
+              _id: n.id,
+              userId: n.user_id,
+              title: n.title,
+              message: n.message,
+              type: n.type || 'system',
+              isRead: Boolean(n.is_read || n.read || readSet?.has(n.id)),
+              read: Boolean(n.is_read || n.read || readSet?.has(n.id)),
+              link: n.link,
+              createdAt: n.created_at,
+            }));
+          }
+        } catch (e: any) {
+          // fallback to memory
+        }
+      }
+
+      return store.userNotifications
+        .filter((n: any) => !n.userId || n.userId === 'all' || n.userId === userId)
+        .map((n: any) => ({
+          ...n,
+          isRead: Boolean(n.isRead || n.read || readSet?.has(n.id) || readSet?.has(n._id)),
+          read: Boolean(n.isRead || n.read || readSet?.has(n.id) || readSet?.has(n._id)),
+        }));
+    },
+
+    async create(data: any) {
+      const id = data.id || uuidv4();
+      const now = new Date().toISOString();
+      const item = {
+        id,
+        _id: id,
+        userId: data.userId || null,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        isRead: Boolean(data.isRead ?? data.read ?? false),
+        read: Boolean(data.isRead ?? data.read ?? false),
+        link: data.link || null,
+        createdAt: data.createdAt || now,
+      };
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseAdmin.from('notifications').insert({
+            id,
+            user_id: item.userId,
+            title: item.title,
+            message: item.message,
+            type: item.type,
+            is_read: item.isRead,
+            link: item.link,
+            created_at: item.createdAt,
+          });
+        } catch (e: any) {
+          // fallback to memory
+        }
+      }
+
+      store.userNotifications.unshift(item);
+      return item;
+    },
+
+    async markAsRead(id: string, userId: string) {
+      let readSet = store.userReadNotificationIds.get(userId);
+      if (!readSet) {
+        readSet = new Set<string>();
+        store.userReadNotificationIds.set(userId, readSet);
+      }
+      readSet.add(id);
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseAdmin.from('notifications').update({ is_read: true }).eq('id', id);
+        } catch (e: any) {}
+      }
+
+      const item = store.userNotifications.find((n: any) => (n.id === id || n._id === id));
+      if (item) {
+        item.isRead = true;
+        item.read = true;
+      }
+      return true;
+    },
+
+    async markAllAsRead(userId: string) {
+      let readSet = store.userReadNotificationIds.get(userId);
+      if (!readSet) {
+        readSet = new Set<string>();
+        store.userReadNotificationIds.set(userId, readSet);
+      }
+
+      store.userNotifications.forEach((n: any) => {
+        if (!n.userId || n.userId === 'all' || n.userId === userId) {
+          n.isRead = true;
+          n.read = true;
+          readSet?.add(n.id || n._id);
+        }
+      });
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseAdmin.from('notifications').update({ is_read: true }).or(`user_id.eq.${userId},user_id.is.null,user_id.eq.all`);
+        } catch (e: any) {}
+      }
+
+      return true;
     }
   }
 };

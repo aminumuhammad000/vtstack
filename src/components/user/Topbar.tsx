@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
 import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 
 interface TopbarProps {
@@ -14,6 +15,23 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
     const { user, logout } = useAuth();
     const router = useRouter();
     const [showDropdown, setShowDropdown] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchUnread = async () => {
+            try {
+                const res = await api.get('/notifications');
+                if (isMounted && res.data?.success) {
+                    setUnreadCount(res.data.unreadCount ?? 0);
+                }
+            } catch (e) {
+                // silent
+            }
+        };
+        fetchUnread();
+        return () => { isMounted = false; };
+    }, []);
 
     const handleLogout = () => {
         logout();
@@ -44,13 +62,20 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
             {/* Right Section - User Menu */}
             <div className="flex items-center gap-3 lg:gap-5">
                 {/* Notifications Icon */}
-                <button 
-                    className="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                <Link 
+                    href="/app/notifications"
+                    className="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
                     aria-label="Notifications"
                 >
                     <Bell size={20} />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                </button>
+                    {unreadCount > 0 ? (
+                        <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center animate-pulse">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    ) : (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-600 rounded-full border-2 border-white"></span>
+                    )}
+                </Link>
 
                 {/* User Profile Dropdown */}
                 <div className="relative">
@@ -90,6 +115,21 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                                 >
                                     <User size={16} />
                                     Profile
+                                </Link>
+                                <Link
+                                    href="/app/notifications"
+                                    className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                                    onClick={() => setShowDropdown(false)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Bell size={16} />
+                                        Notifications
+                                    </div>
+                                    {unreadCount > 0 && (
+                                        <span className="px-1.5 py-0.5 text-[10px] bg-red-100 text-red-600 font-bold rounded-full">
+                                            {unreadCount}
+                                        </span>
+                                    )}
                                 </Link>
                                 <Link
                                     href="/app/settings"
