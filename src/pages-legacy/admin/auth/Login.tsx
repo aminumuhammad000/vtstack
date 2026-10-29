@@ -31,7 +31,8 @@ const Login: React.FC = () => {
                 password: data.password
             });
             login(response.token, response.user);
-            navigate('/dashboard');
+            // Navigate directly to the Admin Portal dashboard
+            window.location.href = '/admin';
         } catch (err: any) {
             console.error('Login error:', err);
             setError(err.response?.data?.message || 'Failed to login. Please try again.');

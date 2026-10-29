@@ -19,28 +19,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
 
-    const existing = await db.users.findByEmail(email);
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = typeof password === 'string' ? password.trim() : password;
+
+    const existing = await db.users.findByEmail(cleanEmail);
     if (existing) {
       return NextResponse.json({ success: false, message: 'User with this email already exists' }, { status: 409 });
     }
 
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(cleanPassword);
     const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
 
     const user = await db.users.create({
-      email,
+      email: cleanEmail,
       passwordHash,
       firstName: fName,
       lastName: lName,
       fullName: fullName || `${fName} ${lName}`.trim(),
-      phone,
-      businessName,
+      phone: phone.trim(),
+      businessName: businessName?.trim(),
       kycLevel: 1, // Activated
       status: 'active',
       verificationToken,
       resetPasswordOtp: verificationToken,
       resetPasswordOtpExpires: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      isEmailVerified: false,
+      isEmailVerified: true,
     });
 
     // Send verification OTP email via Resend

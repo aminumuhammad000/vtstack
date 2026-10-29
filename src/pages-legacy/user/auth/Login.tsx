@@ -57,8 +57,8 @@ export const Login: React.FC = () => {
             login(token, user);
             setSuccess('Redirecting to dashboard...');
             setTimeout(() => {
-                navigate('/dashboard');
-            }, 800);
+                window.location.href = '/app';
+            }, 600);
         } catch (err: any) {
             console.error('Login error:', err);
             const errorMessage = err.response?.data?.message || err.message || 'Failed to login. Please try again.';

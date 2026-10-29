@@ -12,20 +12,35 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<DbUser | n
 
   // 2. Check Authorization header
   const authHeader = req.headers.get('authorization');
-  const token = extractBearerToken(authHeader);
+  let token = extractBearerToken(authHeader);
+
+  // 3. Fallback to cookies if Authorization header is missing
+  if (!token) {
+    token = req.cookies.get('token')?.value || req.cookies.get('auth_token')?.value || null;
+  }
+
   if (!token) return null;
 
-  // 2a. If token is an API key prefix (e.g., vtp_live_, vtp_test_, sk_live_)
+  // 4. If token is an API key prefix (e.g., vtp_live_, vtp_test_, sk_live_)
   if (token.startsWith('vtp_') || token.startsWith('sk_')) {
     const user = await db.users.findByApiKey(token);
     if (user) return user;
   }
 
-  // 2b. Otherwise verify as JWT token
+  // 5. Otherwise verify as JWT token
   const payload = verifyToken(token);
   if (!payload || !payload.userId) return null;
 
-  return db.users.findById(payload.userId);
+  const user = await db.users.findById(payload.userId);
+  if (user) return user;
+
+  // Fallback: search by email from token payload
+  if (payload.email) {
+    const userByEmail = await db.users.findByEmail(payload.email);
+    if (userByEmail) return userByEmail;
+  }
+
+  return null;
 }
 
 export async function requireAdmin(req: NextRequest): Promise<DbUser | null> {

