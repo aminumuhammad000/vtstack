@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword, signToken } from '@/lib/auth/jwt';
-import { sendOtpEmail } from '@/lib/email/resend';
+import { sendOtpEmail, sendWelcomeEmail } from '@/lib/email/resend';
 
 export async function POST(req: NextRequest) {
   try {
