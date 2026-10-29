@@ -76,9 +76,12 @@ export const Register: React.FC = () => {
             const { confirmPassword, ...registerData } = formData;
             const response = await api.post('/auth/register', registerData);
             setSuccessMessage(response.data.message || 'Registration successful. Please check your email for the verification OTP.');
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('verify_email', formData.email);
+            }
             setTimeout(() => {
-                navigate('/verify-otp', { state: { email: formData.email } });
-            }, 2000);
+                navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`, { state: { email: formData.email } });
+            }, 1500);
         } catch (err: any) {
             console.error('Registration error:', err);
             setError(err.response?.data?.message || 'Failed to register. Please try again.');
@@ -99,7 +102,12 @@ export const Register: React.FC = () => {
                 <h2 className="text-2xl font-extrabold text-gray-900 mb-4 tracking-tight">Check Your Email</h2>
                 <p className="text-gray-600 mb-8 font-medium leading-relaxed">{successMessage}</p>
                 <button
-                    onClick={() => navigate('/verify-otp', { state: { email: formData.email } })}
+                    onClick={() => {
+                        if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('verify_email', formData.email);
+                        }
+                        navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`, { state: { email: formData.email } });
+                    }}
                     className="w-full py-3.5 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-primary-200 hover:shadow-primary-300 transition-all transform hover:-translate-y-1 active:translate-y-0"
                 >
                     Enter OTP

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '@/services/api';
-import { Loader2, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck, Mail, Edit3 } from 'lucide-react';
 
 export const VerifyOtp: React.FC = () => {
     const navigate = useNavigate();
@@ -14,17 +14,36 @@ export const VerifyOtp: React.FC = () => {
     const [success, setSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    const [isEditingEmail, setIsEditingEmail] = useState(false);
 
     useEffect(() => {
-        // Try to get email from location state (passed from register page)
-        if (location.state?.email) {
-            setEmail(location.state.email);
+        if (typeof window !== 'undefined') {
+            // 1. Try URL search params (?email=...)
+            const params = new URLSearchParams(window.location.search);
+            const queryEmail = params.get('email');
+            if (queryEmail) {
+                setEmail(decodeURIComponent(queryEmail));
+                return;
+            }
+
+            // 2. Try location state
+            if (location.state?.email) {
+                setEmail(location.state.email);
+                return;
+            }
+
+            // 3. Try session storage
+            const storedEmail = sessionStorage.getItem('verify_email');
+            if (storedEmail) {
+                setEmail(storedEmail);
+                return;
+            }
         }
     }, [location]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Only allow numbers
-        const value = e.target.value.replace(/[^0-9]/g, '');
+        // Only allow numbers, max 6 digits
+        const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
         setOtp(value);
         setError('');
     };
@@ -36,19 +55,33 @@ export const VerifyOtp: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!email) {
+            setError('Please provide your email address');
+            setIsEditingEmail(true);
+            return;
+        }
+
+        if (otp.length !== 6) {
+            setError('Please enter the complete 6-digit verification code');
+            return;
+        }
+
         setIsLoading(true);
         setError('');
         setSuccess('');
 
         try {
-            await api.post('/auth/verify-otp', { email, otp });
+            await api.post('/auth/verify-otp', { email: email.trim(), otp: otp.trim() });
             setSuccess('Email verified successfully! Redirecting to login...');
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('verify_email');
+            }
             setTimeout(() => {
                 navigate('/login');
-            }, 2000);
+            }, 1800);
         } catch (err: any) {
             console.error('Verification error:', err);
-            setError(err.response?.data?.message || 'Failed to verify OTP. Please try again.');
+            setError(err.response?.data?.message || 'Invalid or expired OTP code. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -57,6 +90,7 @@ export const VerifyOtp: React.FC = () => {
     const handleResendOtp = async () => {
         if (!email) {
             setError('Email is required to resend OTP');
+            setIsEditingEmail(true);
             return;
         }
         setIsResending(true);
@@ -64,8 +98,8 @@ export const VerifyOtp: React.FC = () => {
         setSuccess('');
 
         try {
-            await api.post('/auth/resend-otp', { email });
-            setSuccess('OTP resent successfully. Please check your email.');
+            await api.post('/auth/resend-otp', { email: email.trim() });
+            setSuccess('Verification code resent! Please check your inbox.');
         } catch (err: any) {
             console.error('Resend OTP error:', err);
             setError(err.response?.data?.message || 'Failed to resend OTP.');
@@ -82,10 +116,26 @@ export const VerifyOtp: React.FC = () => {
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-50 rounded-2xl mb-6 shadow-sm transform rotate-3">
                             <ShieldCheck className="w-10 h-10 text-primary-600 transform -rotate-3" />
                         </div>
-                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Verify Email</h2>
+                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Enter Verification Code</h2>
                         <p className="text-sm text-gray-500 mt-2 font-medium">
-                            We sent a 6-digit code to <span className="font-bold text-gray-800">{email || 'your email'}</span>
+                            We sent a 6-digit one-time code to
                         </p>
+                        {email ? (
+                            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-semibold border border-primary-100 max-w-full truncate">
+                                <Mail size={14} className="flex-shrink-0" />
+                                <span className="truncate">{email}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditingEmail(!isEditingEmail)}
+                                    className="ml-1 text-primary-500 hover:text-primary-800 text-xs flex items-center gap-1 underline"
+                                    title="Change email"
+                                >
+                                    <Edit3 size={12} />
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-amber-600 mt-1 font-medium">Please enter your email below to verify</p>
+                        )}
                     </div>
 
                     {error && (
@@ -103,8 +153,8 @@ export const VerifyOtp: React.FC = () => {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {!location.state?.email && (
-                            <div>
+                        {(!email || isEditingEmail) && (
+                            <div className="animate-fade-in">
                                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Email Address</label>
                                 <input
                                     type="email"
@@ -118,14 +168,19 @@ export const VerifyOtp: React.FC = () => {
                         )}
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Verification Code</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Verification Code</label>
+                                <span className="text-xs text-gray-400 font-medium">6 digits</span>
+                            </div>
                             <input
                                 type="text"
+                                inputMode="numeric"
+                                autoFocus
                                 value={otp}
                                 onChange={handleChange}
                                 placeholder="000000"
                                 maxLength={6}
-                                className="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-50 outline-none transition-all bg-gray-50 focus:bg-white text-center text-3xl tracking-[1em] font-black text-gray-900 placeholder:tracking-normal placeholder:text-gray-300 placeholder:font-bold placeholder:text-lg"
+                                className="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-50 outline-none transition-all bg-gray-50 focus:bg-white text-center text-3xl tracking-[0.6em] font-black text-gray-900 placeholder:tracking-normal placeholder:text-gray-300 placeholder:font-bold placeholder:text-lg"
                                 required
                             />
                         </div>
@@ -142,7 +197,7 @@ export const VerifyOtp: React.FC = () => {
                                 </>
                             ) : (
                                 <>
-                                    Verify Account
+                                    Verify Code
                                     <ArrowRight size={20} />
                                 </>
                             )}
@@ -160,7 +215,7 @@ export const VerifyOtp: React.FC = () => {
                             ) : (
                                 <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
                             )}
-                            Resend Verification Code
+                            Resend Code
                         </button>
                     </div>
                 </div>

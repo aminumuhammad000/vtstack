@@ -66,10 +66,12 @@ export const Login: React.FC = () => {
 
             // If error is related to unverified email, offer to verify
             if (errorMessage.includes('verify your email')) {
-                // Optional: Automatically redirect or show a button
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('verify_email', formData.email);
+                }
                 setTimeout(() => {
-                    navigate('/verify-otp', { state: { email: formData.email } });
-                }, 2000);
+                    navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`, { state: { email: formData.email } });
+                }, 1500);
             }
         } finally {
             setIsLoading(false);

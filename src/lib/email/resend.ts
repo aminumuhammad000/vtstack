@@ -21,7 +21,7 @@ export async function sendEmail(options: SendEmailOptions) {
   }
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    let res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -36,7 +36,30 @@ export async function sendEmail(options: SendEmailOptions) {
       }),
     });
 
-    const data = await res.json();
+    let data = await res.json();
+    if (!res.ok) {
+      console.warn('[Email:Resend] Initial send attempt failed:', data);
+      const errorMsg = (data.message || '').toLowerCase();
+      if ((errorMsg.includes('domain') || errorMsg.includes('not verified') || data.name === 'validation_error') && !from.includes('onboarding@resend.dev')) {
+        console.info('[Email:Resend] Retrying via onboarding@resend.dev in case custom domain is unverified...');
+        res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'VTStack <onboarding@resend.dev>',
+            to: recipients,
+            subject: options.subject,
+            html: options.html,
+            text: options.text,
+          }),
+        });
+        data = await res.json();
+      }
+    }
+
     if (!res.ok) {
       console.error('[Email:Resend] Failed to send email:', data);
       return { success: false, error: data.message || 'Failed to send email via Resend' };

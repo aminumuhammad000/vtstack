@@ -47,6 +47,14 @@ export function useNavigate() {
             dest = dest.replace('/dashboard', '/app');
         }
 
+        if (options?.state) {
+            try {
+                if (typeof window !== 'undefined') {
+                    window.sessionStorage.setItem('__router_nav_state', JSON.stringify(options.state));
+                }
+            } catch {}
+        }
+
         if (typeof dest === 'number') {
             if (dest === -1) router.back();
             else router.forward();
@@ -62,11 +70,18 @@ export function useLocation() {
     const pathname = usePathname();
     const [search, setSearch] = useState('');
     const [hash, setHash] = useState('');
+    const [state, setState] = useState<any>(null);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setSearch(window.location.search);
             setHash(window.location.hash);
+            try {
+                const saved = window.sessionStorage.getItem('__router_nav_state');
+                if (saved) {
+                    setState(JSON.parse(saved));
+                }
+            } catch {}
         }
     }, [pathname]);
 
@@ -74,7 +89,7 @@ export function useLocation() {
         pathname: pathname || '',
         search,
         hash,
-        state: null,
+        state,
     };
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword, signToken } from '@/lib/auth/jwt';
+import { sendOtpEmail } from '@/lib/email/resend';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,8 +38,17 @@ export async function POST(req: NextRequest) {
       kycLevel: 1, // Activated
       status: 'active',
       verificationToken,
-      isEmailVerified: true,
+      resetPasswordOtp: verificationToken,
+      resetPasswordOtpExpires: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      isEmailVerified: false,
     });
+
+    // Send verification OTP email via Resend
+    try {
+      await sendOtpEmail(user.email, verificationToken);
+    } catch (emailErr) {
+      console.error('[Registration] Failed to send OTP email:', emailErr);
+    }
 
     // Create wallet
     const wallet = await db.wallets.create({

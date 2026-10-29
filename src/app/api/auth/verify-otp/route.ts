@@ -13,7 +13,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
-    await db.users.update(user.id, { kycLevel: 1, isEmailVerified: true });
+    const trimmedOtp = String(otp).trim();
+    const storedVerification = user.verificationToken ? String(user.verificationToken).trim() : '';
+    const storedReset = user.resetPasswordOtp ? String(user.resetPasswordOtp).trim() : '';
+
+    if (trimmedOtp !== storedVerification && trimmedOtp !== storedReset) {
+      return NextResponse.json({ success: false, message: 'Invalid or expired OTP code' }, { status: 400 });
+    }
+
+    await db.users.update(user.id, {
+      kycLevel: 1,
+      isEmailVerified: true,
+      verificationToken: null,
+      resetPasswordOtp: null,
+    });
     return NextResponse.json({ success: true, message: 'Email verified successfully' });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Verification failed' }, { status: 500 });
