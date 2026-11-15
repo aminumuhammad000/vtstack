@@ -190,13 +190,10 @@ export class PalmPayService {
     const signature = this.generateSignature(payload);
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json;charset=UTF-8',
-      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain, */*',
       'CountryCode': 'NG',
-      'countryCode': 'NG',
       'Authorization': `Bearer ${this.appId}`,
-      'AppId': this.appId,
-      'Merchant-Code': this.merchantId,
       'Signature': signature
     };
 
@@ -228,8 +225,10 @@ export class PalmPayService {
 
     if (!isSuccess || !resJson.data) {
       let msg = resJson.respMsg || resJson.message || `PalmPay error ${resJson.respCode || 'UNKNOWN'}`;
-      if (resJson.respCode === 'OPEN_GW_000017') {
-        msg = "PalmPay gateway error: 'unknow exception' (OPEN_GW_000017). This occurs when the Virtual Account product is not yet enabled/activated for this merchant account on the PalmPay Business portal (under Pay-In -> Virtual Account), or requires PalmPay Business Development/Support approval.";
+      if (resJson.respCode === 'AC100009') {
+        msg = 'This BVN or identity number is already registered for an active virtual account.';
+      } else if (resJson.respCode === 'OPEN_GW_000017') {
+        msg = "PalmPay gateway error: 'unknow exception' (OPEN_GW_000017). Please verify API credentials and headers.";
       }
       throw new Error(`PalmPay Virtual Account Creation Failed: ${msg}`);
     }
