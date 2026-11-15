@@ -372,7 +372,11 @@ export const db = {
       if (isSupabaseConfigured()) {
         try {
           const { data, error } = await supabaseAdmin.from('wallets').select('*').eq('user_id', userId).maybeSingle();
-          if (data && !error) return mapSupabaseWalletToDb(data);
+          if (data && !error) {
+            const mapped = mapSupabaseWalletToDb(data);
+            store.wallets.set(mapped.id, mapped);
+            return mapped;
+          }
           if (error) console.error('[DB:Supabase wallet findByUserId error]:', error.message);
         } catch (e: any) {
           console.error('[DB:Supabase wallet findByUserId exception]:', e.message);
@@ -413,7 +417,17 @@ export const db = {
     },
 
     async update(id: string, updates: Partial<DbWallet>): Promise<DbWallet | null> {
-      const wallet = store.wallets.get(id);
+      let wallet = store.wallets.get(id);
+      if (!wallet && isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabaseAdmin.from('wallets').select('*').eq('id', id).maybeSingle();
+          if (data && !error) {
+            wallet = mapSupabaseWalletToDb(data);
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase wallet update fetch exception]:', e.message);
+        }
+      }
       if (!wallet) return null;
 
       const updated = {
@@ -424,8 +438,21 @@ export const db = {
 
       if (isSupabaseConfigured()) {
         try {
-          await supabaseAdmin.from('wallets').update(mapDbWalletToSupabase(updated)).eq('id', id);
-        } catch (e) {}
+          const sbUpdates: Record<string, any> = {
+            updated_at: updated.updatedAt,
+          };
+          if (updates.balance !== undefined) sbUpdates.balance = updates.balance;
+          if (updates.clearedBalance !== undefined) sbUpdates.cleared_balance = updates.clearedBalance;
+          if (updates.lockedBalance !== undefined) sbUpdates.locked_balance = updates.lockedBalance;
+          if (updates.currency !== undefined) sbUpdates.currency = updates.currency;
+
+          const { error } = await supabaseAdmin.from('wallets').update(sbUpdates).eq('id', id);
+          if (error) {
+            console.error('[DB:Supabase Error] Failed to update wallet:', error.code, error.message);
+          }
+        } catch (e: any) {
+          console.error('[DB:Supabase Exception] Failed to update wallet:', e.message);
+        }
       }
       store.wallets.set(id, updated);
       return updated;
