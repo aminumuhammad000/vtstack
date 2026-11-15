@@ -11,7 +11,10 @@ import {
     Code,
     Terminal,
     Server,
-    Send
+    Send,
+    BookOpen,
+    Sparkles,
+    ChevronRight
 } from 'lucide-react';
 import { Navbar } from '@/components/public/Navbar';
 import { Footer } from '@/components/public/Footer';
@@ -196,6 +199,93 @@ export const LandingPage: React.FC = () => {
                             </ul>
                             <Link to="/contact" className="block w-full py-3 px-4 bg-white border border-gray-200 text-gray-900 font-bold rounded-xl text-center hover:border-primary-500 hover:text-primary-600 transition-colors">Contact Sales</Link>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* How-To Guides & Knowledge Base Section */}
+            <section id="guides" className="py-24 bg-slate-50 border-y border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-16">
+                        <div className="max-w-2xl">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-100 text-primary-800 text-xs font-bold uppercase tracking-wider mb-3">
+                                <Sparkles size={14} className="text-primary-600" />
+                                Knowledge Base & Tutorials
+                            </div>
+                            <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight">Step-by-Step Guides for Every Process</h2>
+                            <p className="text-gray-600 text-base md:text-lg mt-3">
+                                Whether you want to generate real PalmPay virtual accounts, upgrade your KYC tier, or automate payouts, our verified tutorials guide you every step of the way.
+                            </p>
+                        </div>
+                        <div className="mt-6 md:mt-0">
+                            <a href="/blog" className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-md transition-all text-sm group">
+                                View All Guides & Ask AI
+                                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                            </a>
+                        </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[
+                            {
+                                tag: 'Virtual Accounts',
+                                title: 'How to Generate Real PalmPay Virtual Accounts',
+                                desc: 'Step-by-step instructions on issuing dedicated 10-digit PalmPay NUBANs, BVN identity requirements, and instant wallet credit on transfer.',
+                                link: '/blog/how-to-generate-real-palmpay-virtual-accounts'
+                            },
+                            {
+                                tag: 'KYC & Compliance',
+                                title: 'Upgrading from Tier 1 to Tier 3 KYC',
+                                desc: 'Unlock higher daily limits (up to ₦5,000,000/day) with government ID slips, live selfie verification, and corporate CAC documents.',
+                                link: '/blog/kyc-verification-tier1-to-tier3-guide'
+                            },
+                            {
+                                tag: 'Developer & Webhooks',
+                                title: 'API Keys & Webhook Signature Verification',
+                                desc: 'Configure live webhook listeners with RSA-SHA1 signature verification, replay protection, and idempotency in Node.js & Python.',
+                                link: '/blog/developer-integration-api-keys-and-webhooks'
+                            },
+                            {
+                                tag: 'Payouts & Banking',
+                                title: 'Automating Payouts & Daily Bank Settlements',
+                                desc: 'Add destination commercial bank accounts, set your 4-digit PIN, and configure automated T+1 daily settlement schedules.',
+                                link: '/blog/how-to-request-and-automate-payouts-and-settlements'
+                            },
+                            {
+                                tag: 'Security',
+                                title: 'Securing Your Wallet: 2FA & IP Whitelisting',
+                                desc: 'Multi-layer security guidelines for protecting business funds, configuring Google Authenticator 2FA, and whitelisting server IPs.',
+                                link: '/blog/securing-your-vtstack-account-pin-2fa-and-ip-whitelist'
+                            },
+                            {
+                                tag: 'Interactive AI Help',
+                                title: 'Instant Answers with Our AI Assistant',
+                                desc: 'Have a specific question about your integration or account? Ask our interactive AI assistant for immediate step-by-step answers.',
+                                link: '/blog'
+                            }
+                        ].map((guide, idx) => (
+                            <a
+                                key={idx}
+                                href={guide.link}
+                                className="bg-white rounded-3xl p-8 border border-gray-200/80 hover:border-primary-300 shadow-sm hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-300 flex flex-col justify-between group"
+                            >
+                                <div>
+                                    <span className="text-xs font-bold text-primary-600 uppercase tracking-wider block mb-3">
+                                        {guide.tag}
+                                    </span>
+                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors mb-3">
+                                        {guide.title}
+                                    </h3>
+                                    <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                                        {guide.desc}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary-600 group-hover:translate-x-1 transition-transform">
+                                    <span>Read Full Guide</span>
+                                    <ChevronRight size={14} />
+                                </div>
+                            </a>
+                        ))}
                     </div>
                 </div>
             </section>

@@ -28,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({ transparent = false }) => {
         { name: 'About', href: '/about' },
         { name: 'Features', href: '/#features' },
         { name: 'Pricing', href: '/#pricing' },
+        { name: 'Guides & Blog', href: '/blog' },
         { name: 'Developers', href: '/#developers' },
         { name: 'Contact', href: '/contact' },
     ];
