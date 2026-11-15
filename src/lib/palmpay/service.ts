@@ -175,6 +175,7 @@ export class PalmPayService {
     const accountName = input.accountName || input.customerName;
 
     const payload: Record<string, any> = {
+      virtualAccountName: accountName,
       accountName: accountName,
       customerName: input.customerName || accountName,
       email: input.email,
@@ -226,7 +227,10 @@ export class PalmPayService {
     const isSuccess = resJson.respCode === '00000000' || resJson.respCode === '00' || resJson.respCode === '0';
 
     if (!isSuccess || !resJson.data) {
-      const msg = resJson.respMsg || resJson.message || `PalmPay error ${resJson.respCode || 'UNKNOWN'}`;
+      let msg = resJson.respMsg || resJson.message || `PalmPay error ${resJson.respCode || 'UNKNOWN'}`;
+      if (resJson.respCode === 'OPEN_GW_000017') {
+        msg = "PalmPay gateway error: 'unknow exception' (OPEN_GW_000017). This occurs when the Virtual Account product is not yet enabled/activated for this merchant account on the PalmPay Business portal (under Pay-In -> Virtual Account), or requires PalmPay Business Development/Support approval.";
+      }
       throw new Error(`PalmPay Virtual Account Creation Failed: ${msg}`);
     }
 
