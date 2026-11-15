@@ -202,6 +202,35 @@ const WebhooksPage: React.FC = () => {
 
             {activeTab === 'logs' ? (
                 <>
+                    {/* Inbound PalmPay Webhook URL Banner */}
+                    <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-5 rounded-2xl shadow-sm border border-purple-700/50">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-200 border border-purple-400/30 mb-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    PalmPay Webhook Inbound Gateway
+                                </span>
+                                <h3 className="text-base font-bold text-white">PalmPay Virtual Account Notification URL</h3>
+                                <p className="text-xs text-purple-200/80 mt-1">Configure this endpoint in your PalmPay Merchant Portal (Web Business &gt; Pay-In &gt; Webhook)</p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <code className="px-3.5 py-2 bg-black/30 border border-white/10 rounded-xl text-xs font-mono text-purple-100 select-all">
+                                    {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/palmpay` : 'https://api.vtstack.com.ng/api/webhooks/palmpay'}
+                                </code>
+                                <button
+                                    onClick={() => {
+                                        const url = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/palmpay` : 'https://api.vtstack.com.ng/api/webhooks/palmpay';
+                                        navigator.clipboard.writeText(url);
+                                        toast.success('PalmPay Webhook URL copied!');
+                                    }}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all shadow-sm active:scale-95 text-center"
+                                >
+                                    Copy URL
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Stats Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">

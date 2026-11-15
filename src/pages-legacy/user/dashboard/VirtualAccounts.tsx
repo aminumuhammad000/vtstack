@@ -41,7 +41,15 @@ export const VirtualAccounts: React.FC = () => {
 
     useEffect(() => {
         fetchAccounts();
-    }, []);
+        if (user) {
+            setNewAccountData(prev => ({
+                ...prev,
+                accountName: prev.accountName || user.fullName || user.businessName || '',
+                email: prev.email || user.email || '',
+                bvn: prev.bvn || user.bvn || '',
+            }));
+        }
+    }, [user]);
 
     const fetchAccounts = async () => {
         setIsLoading(true);
@@ -332,8 +340,8 @@ export const VirtualAccounts: React.FC = () => {
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-up flex flex-col max-h-[90vh]">
                         <div className="p-6 md:p-8 border-b border-gray-100 flex items-center justify-between bg-white">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">New Account</h2>
-                                <p className="text-sm text-gray-500 mt-1">Create a dedicated virtual bank account</p>
+                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">New PalmPay Virtual Account</h2>
+                                <p className="text-sm text-gray-500 mt-1">Provision a real dedicated PalmPay NUBAN account for funding and transfers</p>
                             </div>
                             <button
                                 onClick={() => setShowCreateModal(false)}
