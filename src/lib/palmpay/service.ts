@@ -45,6 +45,7 @@ export class PalmPayService {
   private merchantId: string;
   private privateKey: string = '';
   private publicKey: string = '';
+  private merchantPublicKey: string = '';
   private webhookSecret: string = '';
 
   constructor() {
@@ -105,6 +106,31 @@ export class PalmPayService {
         formatted = `-----BEGIN PUBLIC KEY-----\n${formatted}\n-----END PUBLIC KEY-----`;
       }
       this.publicKey = formatted;
+    }
+
+    // 3. Merchant Public Key (Used to verify simulated / merchant-signed test webhooks)
+    let merchantPub = process.env.PALMPAY_MERCHANT_PUBLIC_KEY || '';
+    if (!merchantPub) {
+      const candidates = [
+        path.join(process.cwd(), 'legacy/server/src/config/palmpay_merchant_public_key.pem'),
+        path.join(process.cwd(), 'palmpay_merchant_public_key.pem')
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          try {
+            merchantPub = fs.readFileSync(p, 'utf8');
+            break;
+          } catch (e) {}
+        }
+      }
+    }
+
+    if (merchantPub) {
+      let formatted = merchantPub.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+      if (!formatted.startsWith('-----BEGIN PUBLIC KEY-----')) {
+        formatted = `-----BEGIN PUBLIC KEY-----\n${formatted}\n-----END PUBLIC KEY-----`;
+      }
+      this.merchantPublicKey = formatted;
     }
   }
 
@@ -254,61 +280,69 @@ export class PalmPayService {
       } catch (e) {}
     }
 
-    // 2. RSA Verification with PalmPay Public Key
-    if (!this.publicKey) {
-      console.warn('[PalmPay Webhook] PalmPay public key not loaded, unable to verify RSA signature');
+    // 2. RSA Verification with PalmPay Public Key (and Merchant Public Key for tests)
+    const candidateKeys = [this.publicKey, this.merchantPublicKey].filter(Boolean);
+    if (candidateKeys.length === 0) {
+      console.warn('[PalmPay Webhook] No public key loaded, unable to verify RSA signature');
       return false;
     }
 
-    // Attempt 1: RSA-SHA256
-    try {
-      const verify256 = crypto.createVerify('RSA-SHA256');
-      verify256.update(rawPayload);
-      if (verify256.verify(this.publicKey, signature, 'base64')) {
-        console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA256');
-        return true;
-      }
-    } catch (e) {}
-
-    // Attempt 2: RSA-SHA1
-    try {
-      const verify1 = crypto.createVerify('RSA-SHA1');
-      verify1.update(rawPayload);
-      if (verify1.verify(this.publicKey, signature, 'base64')) {
-        console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA1');
-        return true;
-      }
-    } catch (e) {}
-
-    // Attempt 3: RSA-SHA1 on MD5(payload).toUpperCase()
-    try {
-      const md5Hash = crypto.createHash('md5').update(rawPayload).digest('hex').toUpperCase();
-      const verifyMD5 = crypto.createVerify('RSA-SHA1');
-      verifyMD5.update(md5Hash);
-      if (verifyMD5.verify(this.publicKey, signature, 'base64')) {
-        console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA1 + MD5(payload)');
-        return true;
-      }
-    } catch (e) {}
-
-    // Attempt 4: Body parameter style (for PalmPay V2 body signing)
-    if (body && typeof body === 'object') {
+    for (const key of candidateKeys) {
+      // Attempt 1: RSA-SHA256 on raw payload
       try {
-        const filteredParams: Record<string, any> = {};
-        for (const key of Object.keys(body).sort()) {
-          if (key !== 'sign' && key !== 'signature' && body[key] !== undefined && body[key] !== null && body[key] !== '' && typeof body[key] !== 'object') {
-            filteredParams[key] = String(body[key]).trim();
-          }
-        }
-        const strA = Object.keys(filteredParams).map(k => `${k}=${filteredParams[k]}`).join('&');
-        const md5Hash = crypto.createHash('md5').update(strA).digest('hex').toUpperCase();
-        const verifyBody = crypto.createVerify('RSA-SHA1');
-        verifyBody.update(md5Hash);
-        if (verifyBody.verify(this.publicKey, signature, 'base64')) {
-          console.log('[PalmPay Webhook] ✅ Verified via sorted body parameters RSA-SHA1+MD5');
+        const verify256 = crypto.createVerify('RSA-SHA256');
+        verify256.update(rawPayload);
+        if (verify256.verify(key, signature, 'base64')) {
+          console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA256');
           return true;
         }
       } catch (e) {}
+
+      // Attempt 2: RSA-SHA1 on raw payload
+      try {
+        const verify1 = crypto.createVerify('RSA-SHA1');
+        verify1.update(rawPayload);
+        if (verify1.verify(key, signature, 'base64')) {
+          console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA1');
+          return true;
+        }
+      } catch (e) {}
+
+      // Attempt 3: RSA-SHA1 on MD5(rawPayload).toUpperCase()
+      try {
+        const md5Hash = crypto.createHash('md5').update(rawPayload).digest('hex').toUpperCase();
+        const verifyMD5 = crypto.createVerify('RSA-SHA1');
+        verifyMD5.update(md5Hash);
+        if (verifyMD5.verify(key, signature, 'base64')) {
+          console.log('[PalmPay Webhook] ✅ Verified via RSA-SHA1 + MD5(payload)');
+          return true;
+        }
+      } catch (e) {}
+
+      // Attempt 4: Sorted Body Parameters style (PalmPay V2 canonical standard)
+      if (body && typeof body === 'object') {
+        const targets = [body, body.data].filter(t => t && typeof t === 'object');
+        for (const target of targets) {
+          try {
+            const filteredParams: Record<string, any> = {};
+            for (const k of Object.keys(target).sort()) {
+              if (k !== 'sign' && k !== 'signature' && target[k] !== undefined && target[k] !== null && target[k] !== '' && typeof target[k] !== 'object') {
+                filteredParams[k] = String(target[k]).trim();
+              }
+            }
+            if (Object.keys(filteredParams).length > 0) {
+              const strA = Object.keys(filteredParams).map(k => `${k}=${filteredParams[k]}`).join('&');
+              const md5Hash = crypto.createHash('md5').update(strA).digest('hex').toUpperCase();
+              const verifyBody = crypto.createVerify('RSA-SHA1');
+              verifyBody.update(md5Hash);
+              if (verifyBody.verify(key, signature, 'base64')) {
+                console.log('[PalmPay Webhook] ✅ Verified via sorted body parameters RSA-SHA1+MD5');
+                return true;
+              }
+            }
+          } catch (e) {}
+        }
+      }
     }
 
     console.error('[PalmPay Webhook] ❌ Signature verification failed across all algorithms');
@@ -323,11 +357,23 @@ export class PalmPayService {
     const orderNo = data.orderNo || data.transId || data.paymentReference || data.orderId;
     if (!orderNo) return null;
 
-    // Determine raw amount and amount in NGN
-    const rawAmount = Number(data.orderAmount || data.amount || data.transAmount || 0);
-    // In PalmPay, if orderAmount is in kobo (minor unit), e.g. 500000 = 5000 NGN
-    // If orderAmount is already NGN or kobo:
-    const amount = rawAmount >= 100 && Number.isInteger(rawAmount) ? rawAmount / 100 : rawAmount;
+    // Determine amount in NGN
+    let amount = 0;
+    const rawAmount = Number(data.orderAmount ?? data.amount ?? data.transAmount ?? 0);
+
+    if (data.orderAmount !== undefined && data.orderAmount !== null) {
+      // PalmPay V2 official spec: orderAmount is Long in cents/kobo (100 kobo = 1 NGN)
+      amount = Number(data.orderAmount) / 100;
+    } else if (data.amount !== undefined && data.amount !== null) {
+      const parsedAmt = Number(data.amount);
+      // If amount is integer >= 1000 without decimal, treat as minor unit if reasonable, else major
+      amount = parsedAmt;
+    } else if (data.transAmount !== undefined && data.transAmount !== null) {
+      const parsedAmt = Number(data.transAmount);
+      amount = parsedAmt >= 100 && Number.isInteger(parsedAmt) ? parsedAmt / 100 : parsedAmt;
+    } else {
+      amount = rawAmount;
+    }
 
     const virtualAccountNo = data.virtualAccountNo || data.virtualAccount || data.accountNumber;
     const payerName = data.payerAccountName || data.payerName || data.customerName;
