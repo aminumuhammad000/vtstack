@@ -4,18 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Search, 
-  Sparkles, 
   BookOpen, 
   ArrowRight, 
   CheckCircle2, 
   HelpCircle, 
-  CreditCard, 
-  ShieldCheck, 
-  Code2, 
-  ArrowUpRight,
-  Send,
-  Loader2,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck,
+  CreditCard,
+  Code2
 } from 'lucide-react';
 import { Navbar } from '@/components/public/Navbar';
 import { Footer } from '@/components/public/Footer';
@@ -24,14 +20,6 @@ import { BLOG_POSTS, BlogPost } from '@/lib/blog-data';
 export default function BlogHubPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<{
-    title: string;
-    answer: string;
-    steps: string[];
-    relatedArticle?: { slug: string; url: string } | null;
-  } | null>(null);
 
   const categories = [
     'All',
@@ -51,183 +39,57 @@ export default function BlogHubPage() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleAskAi = async (e?: React.FormEvent, customQuestion?: string) => {
-    if (e) e.preventDefault();
-    const queryToUse = customQuestion || aiQuestion;
-    if (!queryToUse.trim()) return;
-
-    setAiLoading(true);
-    setAiResult(null);
-
-    try {
-      const res = await fetch('/api/help/ai-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: queryToUse })
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        setAiResult(data.data);
-      }
-    } catch (err) {
-      console.error('AI query error:', err);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const quickPrompts = [
-    'How do I create a real PalmPay virtual account?',
-    'Why is my 11-digit BVN required for virtual accounts?',
-    'How do I verify webhook signatures in Node.js?',
-    'How do I upgrade to Tier 3 KYC with CAC?',
-    'How to automate daily bank settlements?'
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-gray-900 selection:bg-primary-100 selection:text-primary-900">
       <Navbar transparent={false} />
 
-      {/* Hero Section */}
-      <section className="relative pt-36 pb-20 overflow-hidden bg-gradient-to-b from-white via-primary-50/30 to-slate-50 border-b border-gray-100">
+      {/* Clean Hero Section */}
+      <section className="relative pt-36 pb-16 overflow-hidden bg-gradient-to-b from-white via-primary-50/20 to-slate-50 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100/70 border border-primary-200 text-primary-800 text-xs font-bold uppercase tracking-wider mb-6">
-              <Sparkles size={14} className="text-primary-600 animate-pulse" />
-              VTStack Knowledge Base & How-To Guides
+              <BookOpen size={14} className="text-primary-600" />
+              Official VTStack Documentation & How-To Guides
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight leading-tight mb-6">
-              Learn, Build & Scale with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-700">VTStack</span>
+              Learn, Build and Scale with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-700">VTStack</span>
             </h1>
-            <p className="text-lg text-gray-600 leading-relaxed mb-10">
-              Clear, step-by-step tutorials covering your entire payment journey: from real PalmPay virtual accounts and KYC compliance to automated bank settlements and developer webhooks.
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed mb-8">
+              Authoritative step-by-step guides written by Aminu Muhammad covering real PalmPay virtual accounts, KYC compliance, developer webhooks, and automated bank settlements.
             </p>
 
-            {/* AI Assistant Search Bar */}
-            <div className="bg-white p-3 rounded-3xl shadow-xl shadow-primary-950/5 border border-primary-100 max-w-2xl mx-auto">
-              <form onSubmit={handleAskAi} className="flex items-center gap-2">
-                <div className="pl-3 text-primary-600">
-                  <Sparkles size={20} />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Ask our AI assistant any how-to question..."
-                  value={aiQuestion}
-                  onChange={(e) => setAiQuestion(e.target.value)}
-                  className="w-full py-2.5 px-2 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-gray-400 font-medium"
-                />
-                <button
-                  type="submit"
-                  disabled={aiLoading || !aiQuestion.trim()}
-                  className="px-6 py-2.5 bg-gray-900 hover:bg-primary-600 text-white font-bold text-sm rounded-2xl transition-all duration-200 flex items-center gap-2 shrink-0 disabled:opacity-50 shadow-md"
-                >
-                  {aiLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
-                  <span>Ask AI</span>
-                </button>
-              </form>
-
-              {/* Quick Prompts */}
-              <div className="flex items-center gap-2 overflow-x-auto py-2.5 px-2 mt-2 border-t border-gray-100 scrollbar-none text-xs">
-                <span className="font-bold text-gray-400 shrink-0">Popular:</span>
-                {quickPrompts.map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setAiQuestion(prompt);
-                      handleAskAi(undefined, prompt);
-                    }}
-                    className="shrink-0 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-primary-50 hover:text-primary-700 text-gray-600 font-medium transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+            {/* Clean Search Input */}
+            <div className="relative max-w-xl mx-auto">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search guides by keyword, topic, or feature (e.g. PalmPay, BVN, Webhooks)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 shadow-sm rounded-2xl text-sm focus:outline-none focus:border-primary-500 font-medium placeholder-gray-400"
+              />
             </div>
-
-            {/* AI Result Card */}
-            {aiResult && (
-              <div className="mt-8 text-left bg-white border-2 border-primary-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-primary-500/10 max-w-2xl mx-auto animate-in fade-in slide-in-from-top-4 duration-300">
-                <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className="p-2 bg-primary-500 text-white rounded-xl">
-                      <Sparkles size={18} />
-                    </span>
-                    <div>
-                      <span className="text-xs font-bold text-primary-600 uppercase tracking-wider">AI Instant Guide</span>
-                      <h3 className="font-black text-gray-900 text-lg leading-snug">{aiResult.title}</h3>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setAiResult(null)}
-                    className="text-gray-400 hover:text-gray-600 text-sm font-semibold"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                <p className="text-gray-700 leading-relaxed text-sm mb-4 font-normal">
-                  {aiResult.answer}
-                </p>
-
-                {aiResult.steps && aiResult.steps.length > 0 && (
-                  <div className="space-y-2 mb-6 bg-slate-50 p-4 rounded-2xl border border-gray-100">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Step-by-Step Instructions:</h4>
-                    {aiResult.steps.map((step, idx) => (
-                      <div key={idx} className="flex items-start gap-2.5 text-xs text-gray-800">
-                        <CheckCircle2 size={15} className="text-primary-600 shrink-0 mt-0.5" />
-                        <span>{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {aiResult.relatedArticle && (
-                  <Link
-                    href={aiResult.relatedArticle.url}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-primary-600 hover:text-primary-700 group"
-                  >
-                    Read complete detailed guide
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </section>
 
       {/* Main Content & Articles Section */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Controls: Search and Categories */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-12">
-          {/* Category Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? 'bg-gray-900 text-white shadow-md'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[260px] md:w-72">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search guides..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500 font-medium"
-            />
-          </div>
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-10 scrollbar-none">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                selectedCategory === cat
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
 
         {/* Articles Grid */}
@@ -298,7 +160,7 @@ export default function BlogHubPage() {
           </div>
         )}
 
-        {/* Journey Highlights Carousel / Section */}
+        {/* Complete Roadmap Section */}
         <div className="mt-24 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 rounded-3xl p-8 sm:p-12 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-primary-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 

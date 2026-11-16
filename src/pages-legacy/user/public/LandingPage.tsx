@@ -219,7 +219,7 @@ export const LandingPage: React.FC = () => {
                         </div>
                         <div className="mt-6 md:mt-0">
                             <a href="/blog" className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-md transition-all text-sm group">
-                                View All Guides & Ask AI
+                                View All Guides
                                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                             </a>
                         </div>
@@ -258,10 +258,10 @@ export const LandingPage: React.FC = () => {
                                 link: '/blog/securing-your-vtstack-account-pin-2fa-and-ip-whitelist'
                             },
                             {
-                                tag: 'Interactive AI Help',
-                                title: 'Instant Answers with Our AI Assistant',
-                                desc: 'Have a specific question about your integration or account? Ask our interactive AI assistant for immediate step-by-step answers.',
-                                link: '/blog'
+                                tag: 'FAQ & Support',
+                                title: 'Frequently Asked Questions & Support',
+                                desc: 'Clear answers to common questions regarding PalmPay accounts, wallet clearance dates, transaction fees, and live merchant support.',
+                                link: '/blog/frequently-asked-questions-and-support-guide'
                             }
                         ].map((guide, idx) => (
                             <a
