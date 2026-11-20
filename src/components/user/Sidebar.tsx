@@ -18,7 +18,8 @@ import {
     ChevronRight,
     X,
     ShieldCheck,
-    Bell
+    Bell,
+    ScrollText
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -52,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen,
         { path: '/app/payout', label: 'Payout', icon: <Send size={20} /> },
         { path: '/app/verification', label: 'Verification', icon: <ShieldCheck size={20} /> },
         { path: '/app/developer', label: 'Developer', icon: <Code size={20} /> },
+        { path: '/app/logs', label: 'Logs', icon: <ScrollText size={20} /> },
         { path: '/app/notifications', label: 'Notifications', icon: <Bell size={20} /> },
         { path: '/app/settings', label: 'Settings', icon: <Settings size={20} /> },
         { path: '/app/help', label: 'Need Help?', icon: <HelpCircle size={20} /> },

@@ -243,14 +243,22 @@ CREATE TABLE IF NOT EXISTS communications (
 -- 14. Webhook Logs Table
 CREATE TABLE IF NOT EXISTS webhook_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT DEFAULT 'webhook',
     event TEXT NOT NULL,
     url TEXT NOT NULL,
+    method TEXT DEFAULT 'POST',
     payload JSONB NOT NULL,
     response_status INTEGER,
     response_body TEXT,
     status TEXT DEFAULT 'success',
+    ip_address TEXT,
+    duration INTEGER,
+    attempt INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_user_id ON webhook_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_created_at ON webhook_logs(created_at DESC);
 
 -- 15. Ledger Table (Double-Entry Bookkeeping)
 CREATE TABLE IF NOT EXISTS ledgers (

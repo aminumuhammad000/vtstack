@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import palmpayService from '@/lib/palmpay/service';
+import { dispatchWebhook } from '@/lib/webhookDispatcher';
 
 /**
  * GET /api/webhooks/palmpay
@@ -219,7 +220,37 @@ export async function POST(req: NextRequest) {
       isRead: false,
     });
 
-    // 9. Log Webhook in Database
+    // 9. Dispatch Webhook to Merchant / User if configured
+    try {
+      const tenant = await db.users.findById(userId);
+      if (tenant?.webhookUrl && tenant?.webhookActive !== false) {
+        await dispatchWebhook({
+          userId,
+          event: 'virtual_account.credit',
+          payload: {
+            event: 'virtual_account.credit',
+            data: {
+              reference: orderNo,
+              amount: netAmount,
+              grossAmount: amount,
+              fee,
+              accountNumber: virtualAccount.accountNumber,
+              payerName,
+              payerAccountNo,
+              payerBankName,
+              sessionId,
+              timestamp: new Date().toISOString(),
+            },
+          },
+          req,
+          source: 'vtstack',
+        });
+      }
+    } catch (whErr) {
+      console.error('[PalmPay Webhook] User webhook dispatch failed:', whErr);
+    }
+
+    // 10. Log Webhook in Database
     await db.webhooks.create({
       source: 'palmpay',
       eventType: body.type || body.notifyType || 'pay_in_order',

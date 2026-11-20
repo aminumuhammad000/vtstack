@@ -20,10 +20,13 @@ import {
     AlertCircle,
     X,
     Eye,
-    EyeOff
+    EyeOff,
+    Activity,
+    ScrollText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
+import { Logs } from './Logs';
 
 export const Developer: React.FC = () => {
     const { user, refreshUser } = useAuth();
@@ -48,7 +51,7 @@ export const Developer: React.FC = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
     // Tab State
-    const [activeSection, setActiveSection] = useState<'keys' | 'docs'>('keys');
+    const [activeSection, setActiveSection] = useState<'keys' | 'logs' | 'docs'>('keys');
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -281,6 +284,14 @@ export const Developer: React.FC = () => {
                             </div>
                         </button>
                         <button
+                            onClick={() => setActiveSection('logs')}
+                            className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeSection === 'logs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Activity size={14} /> Webhook &amp; Logs
+                            </div>
+                        </button>
+                        <button
                             onClick={() => setActiveSection('docs')}
                             className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeSection === 'docs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
@@ -392,6 +403,21 @@ export const Developer: React.FC = () => {
                                                 )}
                                             </div>
                                             {webhookError && <p className="text-red-500 text-xs font-medium ml-1 mt-1">{webhookError}</p>}
+                                        </div>
+
+                                        <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100">
+                                            <button
+                                                onClick={() => setActiveSection('logs')}
+                                                className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1.5 transition-colors"
+                                            >
+                                                <Activity size={14} /> View Webhook Logs &amp; Status &rarr;
+                                            </button>
+                                            <Link
+                                                to="/dashboard/logs"
+                                                className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+                                            >
+                                                Open Dedicated Log Dashboard <ExternalLink size={12} />
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>
@@ -617,6 +643,10 @@ export const Developer: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                ) : activeSection === 'logs' ? (
+                    <div className="animate-fade-in">
+                        <Logs />
                     </div>
                 ) : (
                     <div className="bg-white rounded-3xl border border-gray-200 shadow-xl shadow-gray-200/50 overflow-hidden animate-fade-in">

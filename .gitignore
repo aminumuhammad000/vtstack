@@ -21,7 +21,7 @@ backups/
 server/backups/
 
 # Logs
-logs/
+/logs/
 *.log
 npm-debug.log*
 
