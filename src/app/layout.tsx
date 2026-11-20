@@ -17,11 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="icon" href="/favicon.png" />
-      </head>
-      <body className="bg-white text-gray-900 font-sans antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-white text-gray-900 font-sans antialiased" suppressHydrationWarning>
         <Providers>
           <Suspense fallback={null}>
             {children}

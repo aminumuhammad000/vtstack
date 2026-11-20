@@ -74,9 +74,10 @@ export const Overview: React.FC = () => {
                     api.get('/wallet/transactions?limit=10'),
                     api.get('/wallet/stats')
                 ]);
-                setWallet(walletRes.data.data);
-                setTransactions(txnsRes.data.data.transactions || []);
-                setWalletStats(statsRes.data.data);
+                setWallet(walletRes.data?.data);
+                const txData = txnsRes.data?.data;
+                setTransactions(Array.isArray(txData) ? txData : (txData?.transactions || []));
+                setWalletStats(statsRes.data?.data);
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {

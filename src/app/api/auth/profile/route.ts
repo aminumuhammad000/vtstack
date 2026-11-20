@@ -36,6 +36,16 @@ export async function GET(req: NextRequest) {
         address: user.address,
         bvn: user.bvn,
         nin: user.nin,
+        identityType: user.identityType,
+        idCardPath: user.idCardPath,
+        selfiePath: user.selfiePath,
+        utilityBillPath: user.utilityBillPath,
+        businessAddress: user.businessAddress,
+        businessPhone: user.businessPhone,
+        rcNumber: user.rcNumber,
+        cacDocumentPath: user.cacDocumentPath,
+        payoutIpWhitelist: user.payoutIpWhitelist,
+        payoutRequestReason: user.payoutRequestReason,
       },
     });
   } catch (error: any) {

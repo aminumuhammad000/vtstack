@@ -128,6 +128,7 @@ export const Developer: React.FC = () => {
             if (response.data.success) {
                 setIsEditingWebhook(false);
                 showNotification('Webhook URL updated successfully');
+                await refreshUser();
             }
         } catch (error: any) {
             setWebhookError(error.response?.data?.message || 'Failed to update webhook URL');

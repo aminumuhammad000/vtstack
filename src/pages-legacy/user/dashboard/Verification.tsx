@@ -91,7 +91,8 @@ export const Verification: React.FC = () => {
                         file: base64,
                         folder: isBusinessUpgrade ? `business/${user?.id}/${fieldName}` : `kyc/${user?.id}/${fieldName}`
                     });
-                    setFormData(prev => ({ ...prev, [fieldName]: res.data.url }));
+                    const uploadedUrl = res.data?.url || res.data?.data?.url || base64;
+                    setFormData(prev => ({ ...prev, [fieldName]: uploadedUrl }));
                 } catch (err: any) {
                     setError('Failed to upload document. Please check your connection.');
                     console.error('Upload error:', err);
@@ -442,13 +443,13 @@ export const Verification: React.FC = () => {
                                     <div className="relative">
                                         <input type="file" name="cacDocument" id="cacDocument" className="hidden" onChange={handleFileChange} />
                                         <label htmlFor="cacDocument" className="flex items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-gray-100 rounded-xl hover:bg-slate-50 cursor-pointer transition-all">
-                                            {formData.cacDocument && formData.cacDocument.startsWith('data:') ? (
+                                            {formData.cacDocument ? (
                                                 <CheckCircle2 className="text-green-500" size={20} />
                                             ) : (
                                                 <Upload size={18} className="text-gray-400" />
                                             )}
                                             <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">
-                                                {formData.cacDocument && formData.cacDocument.startsWith('data:') ? 'CAC Certificate Ready' : 'Upload CAC Document'}
+                                                {formData.cacDocument ? 'CAC Certificate Ready' : 'Upload CAC Document'}
                                             </span>
                                         </label>
                                     </div>
@@ -459,13 +460,13 @@ export const Verification: React.FC = () => {
                                     <div className="relative">
                                         <input type="file" name="utilityBill" id="bizUtility" className="hidden" onChange={handleFileChange} />
                                         <label htmlFor="bizUtility" className="flex items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-gray-100 rounded-xl hover:bg-slate-50 cursor-pointer transition-all">
-                                            {formData.utilityBill && formData.utilityBill.startsWith('data:') ? (
+                                            {formData.utilityBill ? (
                                                 <CheckCircle2 className="text-green-500" size={20} />
                                             ) : (
                                                 <Upload size={18} className="text-gray-400" />
                                             )}
                                             <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">
-                                                {formData.utilityBill && formData.utilityBill.startsWith('data:') ? 'Utility Bill Ready' : 'Upload Utility Bill'}
+                                                {formData.utilityBill ? 'Utility Bill Ready' : 'Upload Utility Bill'}
                                             </span>
                                         </label>
                                     </div>
