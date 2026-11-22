@@ -1,21 +1,27 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { DashboardLayout } from '@/components/user/DashboardLayout';
+import DashboardErrorBoundary from '@/components/user/DashboardErrorBoundary';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !isLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [mounted, isLoading, isAuthenticated, router]);
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F9FAFB]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
@@ -27,5 +33,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      <DashboardErrorBoundary>
+        {children}
+      </DashboardErrorBoundary>
+    </DashboardLayout>
+  );
 }

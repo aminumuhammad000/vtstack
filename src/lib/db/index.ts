@@ -908,7 +908,18 @@ export const db = {
 
           const { data, error } = await query;
           if (data && !error && data.length > 0) {
-            return data.map(mapSupabaseLogToDb);
+            let mapped = data.map(mapSupabaseLogToDb);
+            if (options?.search) {
+              const s = options.search.toLowerCase().trim();
+              mapped = mapped.filter((l: any) =>
+                (l.event && l.event.toLowerCase().includes(s)) ||
+                (l.ipAddress && l.ipAddress.toLowerCase().includes(s)) ||
+                (l.url && l.url.toLowerCase().includes(s)) ||
+                (l.method && l.method.toLowerCase().includes(s)) ||
+                (l.statusCode && String(l.statusCode).includes(s))
+              );
+            }
+            return mapped;
           }
         } catch (e: any) {
           // Fallback to local memory store
@@ -1370,6 +1381,23 @@ function mapDbTxToSupabase(tx: DbTransaction): any {
 }
 
 function mapSupabaseLogToDb(l: any): any {
+  const statusCode = Number(l.response_status || l.status_code) || 200;
+  const rawStatus = (l.status || (statusCode >= 200 && statusCode < 300 ? 'success' : 'failed'));
+  const status = typeof rawStatus === 'string' ? rawStatus.toLowerCase() : 'success';
+
+  let payload = l.payload;
+  if (typeof payload === 'string') {
+    try { payload = JSON.parse(payload); } catch {}
+  }
+  let reqHeaders = l.request_headers;
+  if (typeof reqHeaders === 'string') {
+    try { reqHeaders = JSON.parse(reqHeaders); } catch { reqHeaders = {}; }
+  }
+  let resHeaders = l.response_headers;
+  if (typeof resHeaders === 'string') {
+    try { resHeaders = JSON.parse(resHeaders); } catch { resHeaders = {}; }
+  }
+
   return {
     id: l.id,
     _id: l.id,
@@ -1378,18 +1406,18 @@ function mapSupabaseLogToDb(l: any): any {
     event: l.event || 'webhook.event',
     url: l.url || '',
     method: l.method || 'POST',
-    statusCode: l.response_status || l.status_code || 200,
-    status: l.status || 'success',
-    dispatchStatus: l.status || 'success',
+    statusCode,
+    status,
+    dispatchStatus: status,
     ipAddress: l.ip_address || '102.89.42.188',
-    duration: l.duration || 120,
-    attempt: l.attempt || 1,
-    requestHeaders: l.request_headers || {},
-    payload: l.payload || {},
-    responseHeaders: l.response_headers || {},
+    duration: Number(l.duration) || 120,
+    attempt: Number(l.attempt) || 1,
+    requestHeaders: reqHeaders || {},
+    payload: payload || {},
+    responseHeaders: resHeaders || {},
     responseBody: l.response_body || '',
     errorMessage: l.error_message || null,
-    createdAt: l.created_at,
+    createdAt: l.created_at || new Date().toISOString(),
   };
 }
 

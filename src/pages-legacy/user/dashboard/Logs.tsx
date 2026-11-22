@@ -105,10 +105,10 @@ export const Logs: React.FC = () => {
 
             const res = await api.get('/developer/logs', { params });
             if (res.data?.success && res.data?.data) {
-                setLogs(res.data.data.logs || []);
+                setLogs(Array.isArray(res.data.data.logs) ? res.data.data.logs : []);
                 setStats(res.data.data.stats || null);
-                if (res.data.data.stats?.webhookUrl && !testUrl) {
-                    setTestUrl(res.data.data.stats.webhookUrl);
+                if (res.data.data.stats?.webhookUrl) {
+                    setTestUrl((prev) => prev || res.data.data.stats.webhookUrl);
                 }
                 if (res.data.data.pagination) {
                     setTotalPages(res.data.data.pagination.totalPages || 1);
@@ -121,7 +121,7 @@ export const Logs: React.FC = () => {
             setIsLoading(false);
             if (!silent) setIsRefreshing(false);
         }
-    }, [page, typeFilter, statusFilter, searchQuery, testUrl]);
+    }, [page, typeFilter, statusFilter, searchQuery]);
 
     // Initial Load & Query triggers
     useEffect(() => {
@@ -211,41 +211,52 @@ export const Logs: React.FC = () => {
 
         const headers = ['ID', 'Type', 'Event', 'Status Code', 'Status', 'IP Address', 'URL', 'Duration (ms)', 'Attempt', 'Created At'];
         exportToCSV(logs, headers, `vtstack-logs-${Date.now()}.csv`, (item) => [
-            item.id,
-            item.type,
-            item.event,
-            item.statusCode,
-            item.status,
-            item.ipAddress,
-            item.url,
-            item.duration,
-            item.attempt,
-            new Date(item.createdAt).toLocaleString(),
+            item.id || '',
+            item.type || '',
+            item.event || '',
+            item.statusCode ?? 200,
+            item.status || '',
+            item.ipAddress || '',
+            item.url || '',
+            item.duration ?? 0,
+            item.attempt ?? 1,
+            item.createdAt ? new Date(item.createdAt).toLocaleString() : '',
         ]);
         toast.success('Logs exported to CSV');
     };
 
-    const getStatusCodeBadge = (code: number, status: string) => {
+    const getStatusCodeBadge = (code?: number | string, status?: string) => {
+        const numCode = typeof code === 'number' ? code : Number(code) || 0;
+        const rawStatus = (typeof status === 'string' && status.trim())
+            ? status.trim().toUpperCase()
+            : (numCode >= 200 && numCode < 300 ? 'SUCCESS' : numCode >= 400 ? 'FAILED' : 'PENDING');
+
         let bg = 'bg-gray-100 text-gray-700 border-gray-200';
-        if (code >= 200 && code < 300) {
+        let dotBg = 'bg-gray-500';
+        if (numCode >= 200 && numCode < 300) {
             bg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        } else if (code >= 400 && code < 500) {
+            dotBg = 'bg-emerald-500';
+        } else if (numCode >= 400 && numCode < 500) {
             bg = 'bg-amber-50 text-amber-700 border-amber-200';
-        } else if (code >= 500 || code === 0) {
+            dotBg = 'bg-amber-500';
+        } else if (numCode >= 500 || numCode === 0) {
             bg = 'bg-rose-50 text-rose-700 border-rose-200';
+            dotBg = 'bg-rose-500';
         }
 
         return (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold border ${bg}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${code >= 200 && code < 300 ? 'bg-emerald-500' : code >= 400 && code < 500 ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                {code || 'ERR'} {status.toUpperCase()}
+                <span className={`w-1.5 h-1.5 rounded-full ${dotBg}`} />
+                {numCode || 'ERR'} {rawStatus}
             </span>
         );
     };
 
-    const formatTimestamp = (dateStr: string) => {
+    const formatTimestamp = (dateStr?: string) => {
+        if (!dateStr) return { relative: 'Just now', exact: '-' };
         try {
             const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return { relative: String(dateStr), exact: String(dateStr) };
             const now = new Date();
             const diffMs = now.getTime() - date.getTime();
             const diffMins = Math.floor(diffMs / 60000);
@@ -262,14 +273,15 @@ export const Logs: React.FC = () => {
                 exact: date.toLocaleString(),
             };
         } catch {
-            return { relative: dateStr, exact: dateStr };
+            return { relative: String(dateStr), exact: String(dateStr) };
         }
     };
 
     // Calculate dynamic success rate
     const successRate = useMemo(() => {
-        if (!stats || stats.total === 0) return 100;
-        return ((stats.successCount / stats.total) * 100).toFixed(1);
+        if (!stats || !stats.total || Number(stats.total) === 0) return '100';
+        const rate = (Number(stats.successCount || 0) / Number(stats.total)) * 100;
+        return isNaN(rate) ? '100' : rate.toFixed(1);
     }, [stats]);
 
     return (
@@ -662,9 +674,9 @@ export const Logs: React.FC = () => {
                                             </td>
 
                                             {/* Timestamp */}
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-500" title={time.exact}>
-                                                <div className="font-medium text-slate-700">{time.relative}</div>
-                                                <div className="text-[10px] text-slate-400">{time.exact}</div>
+                                            <td className="px-6 py-4 whitespace-nowrap text-slate-500" title={time.exact} suppressHydrationWarning>
+                                                <div className="font-medium text-slate-700" suppressHydrationWarning>{time.relative}</div>
+                                                <div className="text-[10px] text-slate-400" suppressHydrationWarning>{time.exact}</div>
                                             </td>
 
                                             {/* Action Buttons */}
@@ -850,7 +862,7 @@ export const Logs: React.FC = () => {
                             </div>
 
                             {/* Request Headers */}
-                            {selectedLog.requestHeaders && Object.keys(selectedLog.requestHeaders).length > 0 && (
+                            {selectedLog.requestHeaders && typeof selectedLog.requestHeaders === 'object' && Object.keys(selectedLog.requestHeaders).length > 0 && (
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -869,7 +881,7 @@ export const Logs: React.FC = () => {
                                         {Object.entries(selectedLog.requestHeaders).map(([key, val]) => (
                                             <div key={key} className="grid grid-cols-[180px,1fr] gap-2">
                                                 <span className="text-slate-500 font-bold">{key}:</span>
-                                                <span className="text-slate-800 break-all">{String(val)}</span>
+                                                <span className="text-slate-800 break-all">{String(val ?? '')}</span>
                                             </div>
                                         ))}
                                     </div>

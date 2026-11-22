@@ -413,7 +413,7 @@ export const Developer: React.FC = () => {
                                                 <Activity size={14} /> View Webhook Logs &amp; Status &rarr;
                                             </button>
                                             <Link
-                                                to="/dashboard/logs"
+                                                to="/app/logs"
                                                 className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
                                             >
                                                 Open Dedicated Log Dashboard <ExternalLink size={12} />
