@@ -1,6 +1,157 @@
 import { supabaseAdmin } from '../supabase/server';
 import { hashPassword } from '../auth/jwt';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
+
+const LOGS_FILE_PATH = path.join(process.cwd(), '.data/webhook_logs.json');
+const SETTINGS_FILE_PATH = path.join(process.cwd(), '.data/system_settings.json');
+
+function deepMerge(target: any, source: any): any {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return source !== undefined ? source : target;
+  }
+  const output = { ...(target || {}) };
+  for (const key of Object.keys(source)) {
+    const val = source[key];
+    if (val !== undefined) {
+      if (val && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+        output[key] = deepMerge(output[key], val);
+      } else {
+        output[key] = val;
+      }
+    }
+  }
+  return output;
+}
+
+const DEFAULT_SYSTEM_SETTINGS: any = {
+  general: {
+    companyName: 'VTStack Systems',
+    supportEmail: 'support@vtstack.ng',
+    currency: 'NGN',
+    timezone: 'Africa/Lagos',
+    maintenanceMode: false,
+  },
+  notifications: {
+    emailAlerts: true,
+    slackIntegration: false,
+    webhookRetries: 3,
+    dailyReports: true,
+  },
+  security: {
+    twoFactorAuth: false,
+    sessionTimeout: 30,
+    passwordExpiry: 90,
+    ipWhitelist: '',
+  },
+  integrations: {
+    palmpay: {
+      apiKey: process.env.PALMPAY_API_KEY || '',
+      publicKey: process.env.PALMPAY_PUBLIC_KEY || '',
+      privateKey: process.env.PALMPAY_PRIVATE_KEY || '',
+      webhookSecret: process.env.PALMPAY_WEBHOOK_SECRET || '',
+      baseUrl: process.env.PALMPAY_BASE_URL || 'https://sandbox.palmpay.com/v2',
+      isLive: false,
+    },
+  },
+  parentAccount: {
+    accountName: 'VTStack Operations',
+    accountNumber: '9901827364',
+    bankCode: '999992',
+    type: 'PRIMARY',
+    status: 'ACTIVE',
+  },
+  globalSettlement: {
+    status: false,
+    weekendSettlementEnabled: true,
+    scheduleType: 'T1',
+    schedulePeriod: 'Daily',
+    settlementAccounts: [],
+    cronPaused: false,
+    cronPausedAt: null,
+  },
+  emailConfig: {
+    provider: 'resend',
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    fromEmail: 'VTStack <support@vtstack.ng>',
+    resend: {
+      apiKey: process.env.RESEND_API_KEY || '',
+      from: 'VTStack <support@vtstack.ng>',
+    },
+    gmail: { user: '', pass: '' },
+    smtp: { host: '', port: 587, secure: false, user: '', pass: '' },
+  },
+  payout: {
+    minAmount: 1000,
+    vtpayFeePercent: 0.6,
+    bankSettlementFee: 2500,
+    bankSettlementThreshold: 0,
+    payoutTierStep: 2500,
+    payoutTierFeeStep: 25,
+  },
+  deposit: {
+    vtpayFeePercent: 2.0,
+    virtualAccountChargePercent: 0.5,
+  },
+  kycTierLimits: {
+    t1: { dailyWithdrawalLimit: 50000, monthlyWithdrawalLimit: 500000, dailyDepositLimit: 100000, monthlyDepositLimit: 1000000 },
+    t2: { dailyWithdrawalLimit: 200000, monthlyWithdrawalLimit: 2000000, dailyDepositLimit: 500000, monthlyDepositLimit: 5000000 },
+    t3: { dailyWithdrawalLimit: 1000000, monthlyWithdrawalLimit: 10000000, dailyDepositLimit: 5000000, monthlyDepositLimit: 50000000 },
+  },
+};
+
+function loadPersistedSettings(): any {
+  try {
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+      const data = fs.readFileSync(SETTINGS_FILE_PATH, 'utf8');
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        return deepMerge(DEFAULT_SYSTEM_SETTINGS, parsed);
+      }
+    }
+  } catch (e) {
+    console.error('[DB] Failed to load persisted settings from disk:', e);
+  }
+  return { ...DEFAULT_SYSTEM_SETTINGS };
+}
+
+function persistSettings(settings: any) {
+  try {
+    const dir = path.dirname(SETTINGS_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[DB] Failed to persist settings to disk:', e);
+  }
+}
+
+function loadPersistedLogs(): any[] {
+  try {
+    if (fs.existsSync(LOGS_FILE_PATH)) {
+      const data = fs.readFileSync(LOGS_FILE_PATH, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('[DB] Failed to load persisted logs from disk:', e);
+  }
+  return [];
+}
+
+function persistLogs(logs: any[]) {
+  try {
+    const dir = path.dirname(LOGS_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(LOGS_FILE_PATH, JSON.stringify(logs.slice(0, 500), null, 2), 'utf8');
+  } catch (e) {
+    console.error('[DB] Failed to persist logs to disk:', e);
+  }
+}
 
 export interface DbUser {
   id: string;
@@ -126,6 +277,45 @@ export interface DbPayout {
   completedAt?: string;
 }
 
+let hasSyncedRemoteSettings = false;
+
+async function syncRemoteSettings(): Promise<void> {
+  if (hasSyncedRemoteSettings) return;
+  hasSyncedRemoteSettings = true;
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase settings query timeout')), 2000)
+    );
+    const queryPromise = supabaseAdmin
+      .from('system_settings')
+      .select('*')
+      .eq('key', 'global')
+      .maybeSingle();
+
+    const res: any = await Promise.race([queryPromise, timeoutPromise]);
+    const { data, error } = res || {};
+
+    if (data && !error) {
+      const remoteSettings: any = {};
+      if (data.general) remoteSettings.general = data.general;
+      if (data.notifications) remoteSettings.notifications = data.notifications;
+      if (data.security) remoteSettings.security = data.security;
+      if (data.parent_account) remoteSettings.parentAccount = data.parent_account;
+      if (data.global_settlement) remoteSettings.globalSettlement = data.global_settlement;
+      if (data.email_config) remoteSettings.emailConfig = data.email_config;
+      if (data.payout) remoteSettings.payout = data.payout;
+      if (data.deposit) remoteSettings.deposit = data.deposit;
+      if (data.kyc_tier_limits) remoteSettings.kycTierLimits = data.kyc_tier_limits;
+      if (data.integrations) remoteSettings.integrations = data.integrations;
+
+      store.systemSettings = deepMerge(store.systemSettings, remoteSettings);
+      persistSettings(store.systemSettings);
+    }
+  } catch {
+    // Graceful fallback to disk/local store
+  }
+}
+
 // In-Memory store as cache & graceful fallback
 class LocalStore {
   users: Map<string, DbUser> = new Map();
@@ -135,30 +325,12 @@ class LocalStore {
   payouts: Map<string, DbPayout> = new Map();
   auditLogs: any[] = [];
   feeRules: any[] = [];
-  systemSettings: any = {
-    general: { companyName: 'VTStack Systems', supportEmail: 'support@vtstack.ng', currency: 'NGN', timezone: 'Africa/Lagos', maintenanceMode: false },
-    notifications: { emailAlerts: true, slackIntegration: false, webhookRetries: 3, dailyReports: true },
-    security: { twoFactorAuth: false, sessionTimeout: 30, passwordExpiry: 90, ipWhitelist: '' },
-    parentAccount: { accountName: 'VTStack Operations', accountNumber: '9901827364', bankCode: '999992', type: 'PRIMARY', status: 'ACTIVE' },
-    globalSettlement: { status: false, weekendSettlementEnabled: false, scheduleType: 'T1', schedulePeriod: 'Daily', settlementAccounts: [] },
-    emailConfig: {
-      provider: 'resend',
-      resendApiKey: process.env.RESEND_API_KEY || '',
-      fromEmail: 'VTStack <support@vtstack.ng>',
-    },
-    payout: { minAmount: 100, vtpayFeePercent: 0.5, bankSettlementFee: 10, bankSettlementThreshold: 1000, payoutTierStep: 2500, payoutTierFeeStep: 25 },
-    deposit: { vtpayFeePercent: 1.0, virtualAccountChargePercent: 0.5 },
-    kycTierLimits: {
-      t1: { dailyWithdrawalLimit: 50000, monthlyWithdrawalLimit: 500000, dailyDepositLimit: 100000, monthlyDepositLimit: 1000000 },
-      t2: { dailyWithdrawalLimit: 200000, monthlyWithdrawalLimit: 2000000, dailyDepositLimit: 500000, monthlyDepositLimit: 5000000 },
-      t3: { dailyWithdrawalLimit: 1000000, monthlyWithdrawalLimit: 10000000, dailyDepositLimit: 5000000, monthlyDepositLimit: 50000000 },
-    }
-  };
+  systemSettings: any = loadPersistedSettings();
   helpMessages: any[] = [];
   communications: any[] = [];
   disputes: any[] = [];
   webhooks: any[] = [];
-  webhookLogs: any[] = [];
+  webhookLogs: any[] = loadPersistedLogs();
   userNotifications: any[] = [];
   userReadNotificationIds: Map<string, Set<string>> = new Map();
 
@@ -662,10 +834,34 @@ export const db = {
   // System Settings
   systemSettings: {
     async get() {
+      if (!hasSyncedRemoteSettings) {
+        await syncRemoteSettings();
+      }
       return store.systemSettings;
     },
     async update(updates: any) {
-      store.systemSettings = { ...store.systemSettings, ...updates };
+      store.systemSettings = deepMerge(store.systemSettings, updates);
+      persistSettings(store.systemSettings);
+
+      try {
+        const payload: any = {
+          key: 'global',
+          general: store.systemSettings.general,
+          notifications: store.systemSettings.notifications,
+          security: store.systemSettings.security,
+          parent_account: store.systemSettings.parentAccount,
+          global_settlement: store.systemSettings.globalSettlement,
+          email_config: store.systemSettings.emailConfig,
+          payout: store.systemSettings.payout,
+          deposit: store.systemSettings.deposit,
+          kyc_tier_limits: store.systemSettings.kycTierLimits,
+          updated_at: new Date().toISOString(),
+        };
+        await supabaseAdmin.from('system_settings').upsert(payload, { onConflict: 'key' });
+      } catch (err) {
+        // Disk persistence is already saved
+      }
+
       return store.systemSettings;
     }
   },
@@ -932,11 +1128,15 @@ export const db = {
         return uid === userId || uid === 'all';
       });
 
-      // Auto-seed realistic demo logs for the user if they don't have any yet
+      // If user has real logs, return them directly
+      // Only seed demo logs if this user has never had any real logs or activity
       if (list.length === 0) {
-        const seedLogs = generateSeedLogsForUser(userId);
-        store.webhookLogs.push(...seedLogs);
-        list = [...seedLogs];
+        // Check if user has real virtual accounts or transactions
+        const hasVirtualAccounts = Array.from(store.virtualAccounts.values()).some(va => va.userId === userId);
+        if (!hasVirtualAccounts) {
+          const seedLogs = generateSeedLogsForUser(userId);
+          list = [...seedLogs];
+        }
       }
 
       if (options?.type && options.type !== 'all') {
@@ -975,7 +1175,7 @@ export const db = {
       const logItem = {
         id,
         _id: id,
-        userId: data.userId,
+        userId: typeof data.userId === 'string' ? data.userId : data.userId?._id,
         type: data.type || 'webhook',
         source: data.source || 'vtstack',
         event: data.event || 'webhook.event',
@@ -1017,6 +1217,7 @@ export const db = {
       }
 
       store.webhookLogs.unshift(logItem);
+      persistLogs(store.webhookLogs);
       return logItem;
     },
 
@@ -1024,6 +1225,7 @@ export const db = {
       const idx = store.webhookLogs.findIndex((l: any) => l.id === id || l._id === id);
       if (idx !== -1) {
         store.webhookLogs[idx] = { ...store.webhookLogs[idx], ...updates, updatedAt: new Date().toISOString() };
+        persistLogs(store.webhookLogs);
         return store.webhookLogs[idx];
       }
       return null;
@@ -1034,6 +1236,7 @@ export const db = {
         const uid = typeof l.userId === 'object' ? l.userId?._id : l.userId;
         return uid !== userId;
       });
+      persistLogs(store.webhookLogs);
       return true;
     }
   },

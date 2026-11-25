@@ -279,9 +279,9 @@ export const Logs: React.FC = () => {
 
     // Calculate dynamic success rate
     const successRate = useMemo(() => {
-        if (!stats || !stats.total || Number(stats.total) === 0) return '100';
+        if (!stats || !stats.total || Number(stats.total) === 0) return '0';
         const rate = (Number(stats.successCount || 0) / Number(stats.total)) * 100;
-        return isNaN(rate) ? '100' : rate.toFixed(1);
+        return isNaN(rate) ? '0' : rate.toFixed(1);
     }, [stats]);
 
     return (
@@ -388,10 +388,10 @@ export const Logs: React.FC = () => {
                         <div className="bg-white/80 px-3.5 py-2 rounded-xl border border-slate-200 flex items-center gap-2">
                             <span className="text-xs text-slate-500 font-medium">Your Request IP:</span>
                             <span className="font-mono text-xs font-bold text-slate-900">
-                                {stats?.clientIp || '102.89.42.188'}
+                                {stats?.clientIp || '—'}
                             </span>
                             <button
-                                onClick={() => handleCopy(stats?.clientIp || '102.89.42.188', 'IP Address')}
+                                onClick={() => handleCopy(stats?.clientIp || '', 'IP Address')}
                                 className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 transition-colors"
                             >
                                 <Copy size={12} />
@@ -455,7 +455,7 @@ export const Logs: React.FC = () => {
                             <Clock size={18} />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-purple-600 mt-2">{stats?.avgDuration ?? 125} ms</h3>
+                    <h3 className="text-2xl font-black text-purple-600 mt-2">{stats?.avgDuration ?? 0} ms</h3>
                     <p className="text-xs text-slate-500 mt-1">Average round-trip response time</p>
                 </div>
             </div>
@@ -649,15 +649,17 @@ export const Logs: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-[11px]">
-                                                        {log.ipAddress || '102.89.42.188'}
+                                                        {log.ipAddress || '—'}
                                                     </span>
+                                                    {log.ipAddress && (
                                                     <button
-                                                        onClick={() => handleCopy(log.ipAddress || '102.89.42.188', 'IP Address')}
+                                                        onClick={() => handleCopy(log.ipAddress, 'IP Address')}
                                                         className="text-slate-400 hover:text-slate-700 p-1 hover:bg-slate-100 rounded transition-colors"
                                                         title="Copy IP"
                                                     >
                                                         {copiedField === 'IP Address' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                                                     </button>
+                                                    )}
                                                 </div>
                                             </td>
 
@@ -776,14 +778,16 @@ export const Logs: React.FC = () => {
                                     </span>
                                     <div className="flex items-center justify-between mt-1">
                                         <span className="font-mono text-xs font-bold text-slate-900">
-                                            {selectedLog.ipAddress || '102.89.42.188'}
+                                            {selectedLog.ipAddress || '—'}
                                         </span>
+                                        {selectedLog.ipAddress && (
                                         <button
-                                            onClick={() => handleCopy(selectedLog.ipAddress || '102.89.42.188', 'IP Address')}
+                                            onClick={() => handleCopy(selectedLog.ipAddress, 'IP Address')}
                                             className="text-slate-400 hover:text-slate-700"
                                         >
                                             <Copy size={12} />
                                         </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1033,12 +1037,12 @@ export const Logs: React.FC = () => {
                                     {
                                         event: testEvent,
                                         data: {
-                                            reference: 'TST-884912',
-                                            amount: 25000,
+                                            reference: '<auto-generated>',
+                                            amount: '<transaction-amount>',
                                             currency: 'NGN',
                                             status: 'SUCCESS',
-                                            accountNumber: '9901847120',
-                                            timestamp: new Date().toISOString(),
+                                            accountNumber: '<your-virtual-account>',
+                                            timestamp: '<server-timestamp>',
                                         },
                                     },
                                     null,

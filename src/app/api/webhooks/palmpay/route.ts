@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import palmpayService from '@/lib/palmpay/service';
 import { dispatchWebhook } from '@/lib/webhookDispatcher';
+import { calculateDepositFee } from '@/lib/fees';
 
 /**
  * GET /api/webhooks/palmpay
@@ -150,11 +151,8 @@ export async function POST(req: NextRequest) {
       return new NextResponse('success', { status: 200, headers: { 'Content-Type': 'text/plain' } });
     }
 
-    // 5. Calculate Fees & Net Deposit Amount
-    const settings = await db.systemSettings.get();
-    const feePercent = settings?.deposit?.virtualAccountChargePercent ?? 0.5;
-    const fee = Number(((amount * feePercent) / 100).toFixed(2));
-    const netAmount = Number((amount - fee).toFixed(2));
+    // 5. Calculate Fees & Net Deposit Amount (using admin configured fee with fallback)
+    const { fee, netAmount, feePercent } = await calculateDepositFee(amount);
 
     // 6. Credit User Wallet
     let wallet = await db.wallets.findByUserId(userId);
@@ -220,32 +218,29 @@ export async function POST(req: NextRequest) {
       isRead: false,
     });
 
-    // 9. Dispatch Webhook to Merchant / User if configured
+    // 9. Dispatch Webhook to Merchant / User (logs failure, creates in-app notification & emails user if unconfigured)
     try {
-      const tenant = await db.users.findById(userId);
-      if (tenant?.webhookUrl && tenant?.webhookActive !== false) {
-        await dispatchWebhook({
-          userId,
+      await dispatchWebhook({
+        userId,
+        event: 'virtual_account.credit',
+        payload: {
           event: 'virtual_account.credit',
-          payload: {
-            event: 'virtual_account.credit',
-            data: {
-              reference: orderNo,
-              amount: netAmount,
-              grossAmount: amount,
-              fee,
-              accountNumber: virtualAccount.accountNumber,
-              payerName,
-              payerAccountNo,
-              payerBankName,
-              sessionId,
-              timestamp: new Date().toISOString(),
-            },
+          data: {
+            reference: orderNo,
+            amount: netAmount,
+            grossAmount: amount,
+            fee,
+            accountNumber: virtualAccount.accountNumber,
+            payerName,
+            payerAccountNo,
+            payerBankName,
+            sessionId,
+            timestamp: new Date().toISOString(),
           },
-          req,
-          source: 'vtstack',
-        });
-      }
+        },
+        req,
+        source: 'vtstack',
+      });
     } catch (whErr) {
       console.error('[PalmPay Webhook] User webhook dispatch failed:', whErr);
     }

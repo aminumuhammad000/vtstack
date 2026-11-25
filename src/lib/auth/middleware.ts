@@ -48,5 +48,31 @@ export async function requireAdmin(req: NextRequest): Promise<DbUser | null> {
   if (!user || (user.role !== 'admin' && user.role !== 'subadmin')) {
     return null;
   }
+
+  try {
+    const settings = await db.systemSettings.get();
+    const whitelist = settings?.security?.ipWhitelist;
+    if (whitelist && typeof whitelist === 'string' && whitelist.trim()) {
+      const allowedIps = whitelist
+        .split(',')
+        .map((ip: string) => ip.trim())
+        .filter(Boolean);
+      if (allowedIps.length > 0) {
+        const clientIp =
+          req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+          req.headers.get('x-real-ip')?.trim() ||
+          req.headers.get('cf-connecting-ip')?.trim() ||
+          '';
+        const isLocal = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '' || clientIp === 'localhost';
+        if (!isLocal && !allowedIps.includes(clientIp)) {
+          console.warn(`[Security] Blocked admin access from unauthorized IP: ${clientIp}`);
+          return null;
+        }
+      }
+    }
+  } catch {
+    // Pass through if error reading settings
+  }
+
   return user;
 }

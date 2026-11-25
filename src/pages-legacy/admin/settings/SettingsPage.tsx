@@ -413,14 +413,48 @@ const SettingsPage: React.FC = () => {
             setFetching(true);
             const data = await adminApi.getSystemSettings();
             if (data) {
-                // Merge with default structure to prevent crashes if new fields are missing
                 setSettings(prev => ({
                     ...prev,
-                    ...data,
-                    // Ensure integrations object exists
+                    general: { ...prev.general, ...(data.general || {}) },
+                    notifications: { ...prev.notifications, ...(data.notifications || {}) },
+                    security: { ...prev.security, ...(data.security || {}) },
                     integrations: {
                         ...prev.integrations,
-                        ...(data.integrations || {})
+                        ...(data.integrations || {}),
+                        palmpay: { ...prev.integrations?.palmpay, ...(data.integrations?.palmpay || {}) }
+                    },
+                    parentAccount: { ...prev.parentAccount, ...(data.parentAccount || {}) },
+                    globalSettlement: {
+                        ...prev.globalSettlement,
+                        ...(data.globalSettlement || {}),
+                        settlementAccounts: (data.globalSettlement?.settlementAccounts && data.globalSettlement.settlementAccounts.length > 0)
+                            ? data.globalSettlement.settlementAccounts
+                            : (data.parentAccount?.accountNumber ? [{
+                                accountNumber: data.parentAccount.accountNumber,
+                                bankCode: data.parentAccount.bankCode,
+                                percentage: "100",
+                                accountName: data.parentAccount.accountName || ''
+                              }] : prev.globalSettlement.settlementAccounts)
+                    },
+                    payout: { ...prev.payout, ...(data.payout || {}) },
+                    deposit: { ...prev.deposit, ...(data.deposit || {}) },
+                    emailConfig: {
+                        provider: data.emailConfig?.provider || prev.emailConfig.provider,
+                        resend: {
+                            apiKey: data.emailConfig?.resend?.apiKey || data.emailConfig?.resendApiKey || prev.emailConfig.resend?.apiKey || '',
+                            from: data.emailConfig?.resend?.from || data.emailConfig?.fromEmail || prev.emailConfig.resend?.from || 'VTStack <support@vtstack.ng>',
+                        },
+                        gmail: {
+                            user: data.emailConfig?.gmail?.user || prev.emailConfig.gmail?.user || '',
+                            pass: data.emailConfig?.gmail?.pass || prev.emailConfig.gmail?.pass || '',
+                        },
+                        smtp: {
+                            host: data.emailConfig?.smtp?.host || prev.emailConfig.smtp?.host || '',
+                            port: data.emailConfig?.smtp?.port || prev.emailConfig.smtp?.port || 587,
+                            secure: data.emailConfig?.smtp?.secure ?? prev.emailConfig.smtp?.secure ?? false,
+                            user: data.emailConfig?.smtp?.user || prev.emailConfig.smtp?.user || '',
+                            pass: data.emailConfig?.smtp?.pass || prev.emailConfig.smtp?.pass || '',
+                        }
                     }
                 }));
             }
@@ -434,15 +468,35 @@ const SettingsPage: React.FC = () => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            // Prepare settings for save - sync Parent Account to Global Settlement if enabled
             const finalSettings = { ...settings };
 
-            if (finalSettings.parentAccount && finalSettings.parentAccount.accountNumber && finalSettings.parentAccount.bankCode) {
-                finalSettings.globalSettlement.settlementAccounts = [{
-                    accountNumber: finalSettings.parentAccount.accountNumber,
-                    bankCode: finalSettings.parentAccount.bankCode,
-                    percentage: "100"
-                }];
+            const enteredSettlement = finalSettings.globalSettlement?.settlementAccounts?.[0];
+            if (enteredSettlement && enteredSettlement.accountNumber && enteredSettlement.bankCode) {
+                finalSettings.parentAccount = {
+                    ...finalSettings.parentAccount,
+                    accountNumber: enteredSettlement.accountNumber,
+                    bankCode: enteredSettlement.bankCode,
+                    accountName: enteredSettlement.accountName || finalSettings.parentAccount?.accountName || 'VTStack Operations',
+                    type: 'PRIMARY',
+                    status: 'ACTIVE'
+                };
+            } else if (finalSettings.parentAccount && finalSettings.parentAccount.accountNumber && finalSettings.parentAccount.bankCode) {
+                if (!finalSettings.globalSettlement?.settlementAccounts?.length) {
+                    finalSettings.globalSettlement.settlementAccounts = [{
+                        accountNumber: finalSettings.parentAccount.accountNumber,
+                        bankCode: finalSettings.parentAccount.bankCode,
+                        percentage: "100",
+                        accountName: finalSettings.parentAccount.accountName || 'VTStack Operations'
+                    }];
+                }
+            }
+
+            // Sync emailConfig top-level keys for backward compatibility
+            if (finalSettings.emailConfig?.resend?.apiKey) {
+                (finalSettings.emailConfig as any).resendApiKey = finalSettings.emailConfig.resend.apiKey;
+            }
+            if (finalSettings.emailConfig?.resend?.from) {
+                (finalSettings.emailConfig as any).fromEmail = finalSettings.emailConfig.resend.from;
             }
 
             await adminApi.updateSystemSettings(finalSettings);

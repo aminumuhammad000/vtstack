@@ -95,13 +95,15 @@ export const Payout: React.FC = () => {
     const calculateFees = async () => {
         setIsCalculatingFees(true);
         try {
-            const amountInKobo = Math.round(parseFloat(transferData.amount) * 100);
+            const amountInNaira = parseFloat(transferData.amount);
+            const amountInKobo = Math.round(amountInNaira * 100);
             if (isNaN(amountInKobo) || amountInKobo <= 0) {
                 setFees(null);
                 return;
             }
             const response = await api.post('/payout/calculate-fees', {
                 amount: amountInKobo,
+                amountInNaira,
                 accountNumber: transferData.accountNumber
             });
             setFees(response.data.data);
@@ -116,7 +118,11 @@ export const Payout: React.FC = () => {
     const fetchWallet = async () => {
         try {
             const response = await api.get('/wallet');
-            setWallet(response.data.data);
+            const wData = response.data.data;
+            if (wData && wData.availableBalanceNaira === undefined) {
+                wData.availableBalanceNaira = wData.clearedBalance ?? wData.balance ?? 0;
+            }
+            setWallet(wData);
         } catch (error) {
             console.error('Error fetching wallet:', error);
         } finally {
@@ -324,12 +330,18 @@ export const Payout: React.FC = () => {
             return;
         }
 
+        // Minimum amount check
+        const minAmount = fees?.minAmount || 1000;
+        if (amount < minAmount) {
+            setTransferError(`Minimum withdrawal amount is ₦${minAmount.toLocaleString()}`);
+            return;
+        }
+
         // Calculate total deduction (Amount + Logic Fee)
-        // If fees are calculated, use totalDebit. Otherwise, use amount (risky, but fallback)
-        // Better to wait for fees?
         const totalDeducted = fees ? (fees.totalDebit / 100) : amount;
 
-        if (wallet && totalDeducted > wallet.availableBalanceNaira) {
+        const availableBal = wallet?.availableBalanceNaira ?? wallet?.balance ?? 0;
+        if (totalDeducted > availableBal) {
             setTransferError(`Insufficient balance. Total required: ₦${totalDeducted.toLocaleString()}`);
             return;
         }
@@ -355,18 +367,20 @@ export const Payout: React.FC = () => {
         setTransferSuccess('');
 
         try {
-            const amountInKobo = Math.round(parseFloat(transferData.amount) * 100);
+            const amountInNaira = parseFloat(transferData.amount);
+            const amountInKobo = Math.round(amountInNaira * 100);
             const bankName = banks.find(b => b.code === transferData.bankCode)?.name || 'Unknown Bank';
 
             const response = await api.post('/payout', {
                 accountNumber: transferData.accountNumber,
                 bankCode: transferData.bankCode,
                 accountName: recipientName,
-                amount: amountInKobo,
+                amount: amountInNaira,
+                amountInNaira,
+                amountInKobo,
                 narration: transferData.narration,
                 pin,
-                bankName // Optional, for saving if backend supports 'saveAccount' flag?
-                // Backend supports 'saveAccount' but we handle saving separately in UI via 'Save as beneficiary' button
+                bankName
             });
 
             setTransferResult(response.data.data);
@@ -417,7 +431,7 @@ export const Payout: React.FC = () => {
                         <div className="w-full bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
                             <div className="flex justify-between items-center pb-3 border-b border-gray-100 border-dashed">
                                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Amount Sent</span>
-                                <span className="text-xl font-black text-gray-900">{formatCurrency(transferResult.amount / 100)}</span>
+                                <span className="text-xl font-black text-gray-900">{formatCurrency(transferResult.amountInNaira || (transferResult.amount > 100000 && transferResult.amount % 100 === 0 ? transferResult.amount / 100 : transferResult.amount))}</span>
                             </div>
 
                             <div className="flex justify-between items-center">

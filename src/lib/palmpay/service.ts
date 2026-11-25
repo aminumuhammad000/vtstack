@@ -161,10 +161,44 @@ export class PalmPayService {
     return sign.toString('base64');
   }
 
+  private formatPrivateKey(priv: string): string {
+    let formatted = priv.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+    if (!formatted.startsWith('-----BEGIN PRIVATE KEY-----') && !formatted.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+      formatted = `-----BEGIN PRIVATE KEY-----\n${formatted}\n-----END PRIVATE KEY-----`;
+    }
+    return formatted;
+  }
+
+  private formatPublicKey(pub: string): string {
+    let formatted = pub.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+    if (!formatted.startsWith('-----BEGIN PUBLIC KEY-----')) {
+      formatted = `-----BEGIN PUBLIC KEY-----\n${formatted}\n-----END PUBLIC KEY-----`;
+    }
+    return formatted;
+  }
+
+  private async syncSettings() {
+    try {
+      const db = (await import('@/lib/db')).default;
+      const settings = await db.systemSettings.get();
+      const pp = settings?.integrations?.palmpay;
+      if (pp) {
+        if (pp.baseUrl) this.baseUrl = pp.baseUrl.replace(/\/+$/, '');
+        if (pp.apiKey) this.appId = pp.apiKey;
+        if (pp.publicKey) this.publicKey = this.formatPublicKey(pp.publicKey);
+        if (pp.privateKey) this.privateKey = this.formatPrivateKey(pp.privateKey);
+        if (pp.webhookSecret) this.webhookSecret = pp.webhookSecret;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   /**
    * Request PalmPay to create a real Dedicated Virtual Account
    */
   public async createVirtualAccount(input: CreateVirtualAccountInput): Promise<PalmPayVirtualAccountResponse> {
+    await this.syncSettings();
     const licenseNumber = input.bvn || input.nin || input.cacNumber || '';
     if (!licenseNumber) {
       throw new Error('A valid BVN or NIN is required by PalmPay to generate a real virtual account');

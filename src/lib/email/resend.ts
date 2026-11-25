@@ -2,6 +2,8 @@
  * Resend Email Integration for VTStack
  */
 
+import db from '@/lib/db';
+
 export interface SendEmailOptions {
   to: string | string[];
   subject: string;
@@ -11,8 +13,24 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions) {
-  const apiKey = process.env.RESEND_API_KEY || '';
-  const from = options.from || process.env.RESEND_FROM_EMAIL || 'VTStack <support@vtstack.ng>';
+  let apiKey = process.env.RESEND_API_KEY || '';
+  let from = options.from || process.env.RESEND_FROM_EMAIL || 'VTStack <support@vtstack.ng>';
+
+  try {
+    const settings = await db.systemSettings.get();
+    if (settings?.emailConfig) {
+      const ec = settings.emailConfig;
+      if (ec.resend?.apiKey || ec.resendApiKey) {
+        apiKey = ec.resend?.apiKey || ec.resendApiKey;
+      }
+      if (!options.from && (ec.resend?.from || ec.fromEmail)) {
+        from = ec.resend?.from || ec.fromEmail;
+      }
+    }
+  } catch {
+    // fallback to environment variables
+  }
+
   const recipients = Array.isArray(options.to) ? options.to : [options.to];
 
   if (!apiKey) {
@@ -433,5 +451,160 @@ export async function sendPayoutApprovedEmail(email: string, recipientName?: str
     subject: `Your VTStack Payout API Access Has Been Approved!`,
     html,
     text: `Hello ${name},\n\nYour request for automated programmatic Payouts has been approved! You can now initiate transfers via the API or dashboard at ${appUrl}/app/payout.`,
+  });
+}
+
+export async function sendWebhookNotConfiguredEmail(params: {
+  email: string;
+  name?: string;
+  reference: string;
+  amount: number;
+  event: string;
+  accountNumber?: string;
+}) {
+  const { email, reference, amount, event, accountNumber } = params;
+  const name = params.name || 'Merchant';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Developer Webhook Alert</p>
+      </div>
+
+      <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #f59e0b; border-radius: 50%; margin-bottom: 12px; color: #ffffff; font-size: 22px; font-weight: bold;">
+          !
+        </div>
+        <h2 style="font-size: 20px; color: #92400e; margin: 0 0 8px 0; font-weight: 700;">Action Required: Webhook URL Not Configured</h2>
+        <p style="color: #b45309; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, a payment was received, but we could not notify your system via webhook.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 12px 0; font-weight: 600; text-transform: uppercase;">Transaction Details</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Event:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace;">${event}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Amount:</td>
+            <td style="padding: 6px 0; color: #15803d; font-weight: 700; text-align: right;">₦${amount.toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Reference:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace;">${reference}</td>
+          </tr>
+          ${accountNumber ? `
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Virtual Account:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace;">${accountNumber}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Status:</td>
+            <td style="padding: 6px 0; color: #dc2626; font-weight: 600; text-align: right;">Webhook Skipped (No URL)</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 13px; color: #475569; line-height: 1.5;">
+        <strong>Why did this happen?</strong> Your VTStack account does not have an active Webhook URL configured in Developer settings. To automatically receive real-time notifications whenever customers deposit to your virtual accounts, please register your webhook endpoint.
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${appUrl}/app/developer" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px;">
+          Configure Webhook URL Now
+        </a>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Action Required: Webhook URL Not Configured for Transaction [${reference}]`,
+    html,
+    text: `Hello ${name},\n\nA transaction of ₦${amount.toLocaleString()} (Ref: ${reference}) was successful, but the automated webhook could not be delivered because no Webhook URL is set in your Developer Settings.\n\nPlease visit ${appUrl}/app/developer to configure your webhook endpoint.`,
+  });
+}
+
+export async function sendWebhookDeliveryFailedEmail(params: {
+  email: string;
+  name?: string;
+  reference: string;
+  event: string;
+  targetUrl: string;
+  statusCode?: number;
+  errorMessage?: string;
+}) {
+  const { email, reference, event, targetUrl, statusCode, errorMessage } = params;
+  const name = params.name || 'Merchant';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vtstack.ng';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="margin-bottom: 24px; text-align: center;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VTStack</h1>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Webhook Delivery Failure</p>
+      </div>
+
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 24px; margin-bottom: 24px; text-align: center;">
+        <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: #ef4444; border-radius: 50%; margin-bottom: 12px; color: #ffffff; font-size: 22px; font-weight: bold;">
+          ✕
+        </div>
+        <h2 style="font-size: 20px; color: #991b1b; margin: 0 0 8px 0; font-weight: 700;">Webhook Delivery Failed</h2>
+        <p style="color: #7f1d1d; font-size: 14px; margin: 0; line-height: 1.5;">
+          Hello <strong>${name}</strong>, we attempted to send a webhook event <strong>${event}</strong> to your server, but your server failed to respond successfully.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Event:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace;">${event}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Reference:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace;">${reference}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Target URL:</td>
+            <td style="padding: 6px 0; color: #1e293b; font-weight: 600; text-align: right; font-family: monospace; word-break: break-all;">${targetUrl}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Response Code:</td>
+            <td style="padding: 6px 0; color: #dc2626; font-weight: 700; text-align: right;">${statusCode ? `HTTP ${statusCode}` : 'Connection Failed'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Error:</td>
+            <td style="padding: 6px 0; color: #dc2626; font-weight: 500; text-align: right;">${errorMessage || 'Unknown Error'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${appUrl}/app/logs" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px;">
+          View Logs & Retry
+        </a>
+      </div>
+
+      <div style="text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} VTStack Systems. All rights reserved.
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Webhook Delivery Failed for Event ${event} [${reference}]`,
+    html,
+    text: `Hello ${name},\n\nWe attempted to deliver webhook ${event} (Ref: ${reference}) to ${targetUrl}, but your endpoint responded with: ${statusCode ? `HTTP ${statusCode}` : ''} ${errorMessage || 'Failed'}.\n\nPlease inspect the error details in your logs at ${appUrl}/app/logs.`,
   });
 }

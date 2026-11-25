@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import palmpayService from '@/lib/palmpay/service';
+import { dispatchWebhook } from '@/lib/webhookDispatcher';
 
 export async function GET() {
   return NextResponse.json({
@@ -69,6 +70,32 @@ export async function POST(req: NextRequest) {
             type: 'success',
             isRead: false,
           });
+
+          // Dispatch webhook to merchant
+          try {
+            await dispatchWebhook({
+              userId: payout.userId,
+              event: 'payout.success',
+              payload: {
+                event: 'payout.success',
+                data: {
+                  reference: payout.reference,
+                  amount: payout.amount,
+                  fee: payout.fee,
+                  totalDebit: payout.totalDebit,
+                  accountNumber: payout.accountNumber,
+                  accountName: payout.accountName,
+                  bankCode: payout.bankCode,
+                  status: 'SUCCESS',
+                  timestamp: new Date().toISOString(),
+                },
+              },
+              req,
+              source: 'vtstack',
+            });
+          } catch (whErr) {
+            console.error('[PalmPay Payout Webhook] Dispatch error:', whErr);
+          }
         } else if (orderStatus === 3 || orderStatus === 4) {
           // Failure / Reversal -> unlock/refund user balance
           const wallet = await db.wallets.findByUserId(payout.userId);
@@ -85,6 +112,31 @@ export async function POST(req: NextRequest) {
               type: 'warning',
               isRead: false,
             });
+          }
+
+          // Dispatch webhook to merchant
+          try {
+            await dispatchWebhook({
+              userId: payout.userId,
+              event: 'payout.failed',
+              payload: {
+                event: 'payout.failed',
+                data: {
+                  reference: payout.reference,
+                  amount: payout.amount,
+                  fee: payout.fee,
+                  accountNumber: payout.accountNumber,
+                  accountName: payout.accountName,
+                  bankCode: payout.bankCode,
+                  status: 'FAILED',
+                  timestamp: new Date().toISOString(),
+                },
+              },
+              req,
+              source: 'vtstack',
+            });
+          } catch (whErr) {
+            console.error('[PalmPay Payout Webhook] Dispatch error:', whErr);
           }
         }
       }

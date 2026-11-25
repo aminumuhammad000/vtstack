@@ -12,9 +12,21 @@ export async function GET(req: NextRequest) {
       wallet = await db.wallets.create({ userId: user.id, balance: 0, clearedBalance: 0, lockedBalance: 0 });
     }
 
+    const balance = Number(wallet.balance) || 0;
+    const clearedBalance = Number(wallet.clearedBalance) || 0;
+    const lockedBalance = Number(wallet.lockedBalance) || 0;
+    const availableBalanceNaira = clearedBalance > 0 ? clearedBalance : balance;
+
     return NextResponse.json({
       success: true,
-      data: wallet,
+      data: {
+        ...wallet,
+        balance,
+        clearedBalance,
+        lockedBalance,
+        availableBalanceNaira,
+        availableBalance: Math.round(availableBalanceNaira * 100),
+      },
     });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Failed to fetch wallet' }, { status: 500 });

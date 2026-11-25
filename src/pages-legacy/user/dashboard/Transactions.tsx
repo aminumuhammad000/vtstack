@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import api from '@/services/api';
 import {
     ArrowUpRight,
@@ -74,12 +75,8 @@ export const Transactions: React.FC = () => {
     const isVerified = (user?.kycLevel ?? 0) >= 3;
 
     useEffect(() => {
-        if (isVerified) {
-            fetchTransactions();
-        } else {
-            setIsLoading(false);
-        }
-    }, [filters, page, isVerified]);
+        fetchTransactions();
+    }, [filters, page]);
 
     const fetchTransactions = async () => {
         setIsLoading(true);
@@ -88,13 +85,18 @@ export const Transactions: React.FC = () => {
             if (filters.type) query += `&type=${filters.type}`;
             if (filters.startDate) query += `&startDate=${filters.startDate}`;
             if (filters.endDate) query += `&endDate=${filters.endDate}`;
-            if (filters.search) query += `&search=${filters.search}`;
+            if (filters.search) query += `&search=${encodeURIComponent(filters.search)}`;
 
             const response = await api.get(query);
-            setTransactions(response.data.data.transactions || []);
-            setTotalPages(response.data.data.totalPages || 1);
+            const txData = response.data?.data;
+            const list = Array.isArray(txData)
+                ? txData
+                : (txData?.transactions || txData?.rows || []);
+            setTransactions(list);
+            setTotalPages(txData?.totalPages || txData?.pagination?.totalPages || 1);
         } catch (error) {
             console.error('Error fetching transactions:', error);
+            setTransactions([]);
         } finally {
             setIsLoading(false);
         }
@@ -145,6 +147,30 @@ export const Transactions: React.FC = () => {
         setSelectedTransaction(txn);
     };
 
+    const handleExportCSV = () => {
+        if (!transactions || transactions.length === 0) {
+            toast.error('No transactions available to export');
+            return;
+        }
+        const headers = ['Reference', 'Type', 'Amount (NGN)', 'Status', 'Narration', 'Date'];
+        const rows = transactions.map(t => [
+            `"${t.reference || ''}"`,
+            `"${t.type || ''}"`,
+            `"${t.amountNaira ?? (t.amount ? t.amount / 100 : 0)}"`,
+            `"${t.status || ''}"`,
+            `"${(t.narration || '').replace(/"/g, '""')}"`,
+            `"${t.createdAt || ''}"`
+        ]);
+        const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
             {/* Header */}
@@ -153,29 +179,28 @@ export const Transactions: React.FC = () => {
                     <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">Transactions</h1>
                     <p className="text-sm text-gray-500 mt-1">Monitor and manage all your financial activities</p>
                 </div>
-                {isVerified && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        <button
-                            onClick={fetchTransactions}
-                            className="flex-1 sm:flex-none p-2.5 rounded-xl border border-gray-200 hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 text-gray-700 flex items-center justify-center gap-2 group"
-                            title="Refresh"
-                        >
-                            <RefreshCw size={18} className={`group-hover:text-primary-600 ${isLoading ? 'animate-spin' : ''}`} />
-                            <span className="sm:hidden font-semibold">Refresh</span>
-                        </button>
-                        <button className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl border border-gray-200 hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-semibold text-gray-700 group">
-                            <Download size={18} className="group-hover:text-primary-600" />
-                            Export CSV
-                        </button>
-                    </div>
-                )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <button
+                        onClick={fetchTransactions}
+                        className="flex-1 sm:flex-none p-2.5 rounded-xl border border-gray-200 hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 text-gray-700 flex items-center justify-center gap-2 group cursor-pointer"
+                        title="Refresh"
+                    >
+                        <RefreshCw size={18} className={`group-hover:text-primary-600 ${isLoading ? 'animate-spin' : ''}`} />
+                        <span className="sm:hidden font-semibold">Refresh</span>
+                    </button>
+                    <button 
+                        onClick={handleExportCSV}
+                        className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl border border-gray-200 hover:border-primary-200 hover:bg-primary-50 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-semibold text-gray-700 group cursor-pointer"
+                    >
+                        <Download size={18} className="group-hover:text-primary-600" />
+                        Export CSV
+                    </button>
+                </div>
             </div>
 
-            {!isVerified ? (
-                <VerificationAlert />
-            ) : (
-                <>
-                    {/* Filters Bar */}
+            {!isVerified && <VerificationAlert />}
+
+            {/* Filters Bar */}
                     <div className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm">
                         <div className="flex flex-col lg:flex-row gap-4">
                             {/* Search */}
@@ -447,8 +472,6 @@ export const Transactions: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
 
             {/* Transaction Details Modal */}
             {selectedTransaction && (

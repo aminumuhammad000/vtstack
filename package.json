@@ -7,7 +7,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "create:admin": "node scripts/create-admin.mjs"
+    "create:admin": "node scripts/create-admin.mjs",
+    "backup": "node scripts/daily-backup.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
